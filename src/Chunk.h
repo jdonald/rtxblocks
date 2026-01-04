@@ -4,6 +4,7 @@
 #include <d3d11.h>
 #include <wrl/client.h>
 #include <vector>
+#include <cstdint>
 
 using Microsoft::WRL::ComPtr;
 
