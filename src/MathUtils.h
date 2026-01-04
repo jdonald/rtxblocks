@@ -128,8 +128,8 @@ struct Matrix4x4 {
         result.m[0][0] = xScale;
         result.m[1][1] = yScale;
         result.m[2][2] = farZ / (farZ - nearZ);
-        result.m[2][3] = -nearZ * farZ / (farZ - nearZ);
-        result.m[3][2] = 1.0f;
+        result.m[2][3] = 1.0f;
+        result.m[3][2] = (-nearZ * farZ) / (farZ - nearZ);
         result.m[3][3] = 0.0f;
 
         return result;

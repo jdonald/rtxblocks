@@ -94,6 +94,12 @@ void World::Render(ID3D11DeviceContext* context) {
     }
 }
 
+void World::RenderTransparent(ID3D11DeviceContext* context) {
+    for (auto& pair : m_chunks) {
+        pair.second->RenderTransparent(context);
+    }
+}
+
 Block World::GetBlock(int worldX, int worldY, int worldZ) const {
     if (worldY < 0 || worldY >= CHUNK_HEIGHT) {
         return Block(BlockType::Air);
@@ -122,6 +128,23 @@ void World::SetBlock(int worldX, int worldY, int worldZ, BlockType type) {
     if (chunk) {
         chunk->SetBlock(localX, worldY, localZ, type);
     }
+}
+
+int World::GetTerrainHeight(int worldX, int worldZ) const {
+    return m_terrainGenerator.GetTerrainHeight(worldX, worldZ);
+}
+
+World::DebugStats World::GetDebugStats() const {
+    DebugStats stats;
+    stats.chunkCount = static_cast<int>(m_chunks.size());
+
+    for (const auto& pair : m_chunks) {
+        const Chunk* chunk = pair.second.get();
+        stats.solidIndexCount += static_cast<uint64_t>(chunk->GetSolidIndexCount());
+        stats.transparentIndexCount += static_cast<uint64_t>(chunk->GetTransparentIndexCount());
+    }
+
+    return stats;
 }
 
 bool World::Raycast(const Vector3& origin, const Vector3& direction, float maxDistance,

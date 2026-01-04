@@ -13,11 +13,113 @@
 #pragma comment(lib, "dxgi.lib")
 #pragma comment(lib, "d3dcompiler.lib")
 
+// Simple 5x7 bitmap font data for ASCII 32-127
+// Each character is 5 pixels wide, 7 pixels tall
+static const uint8_t g_fontData[96][7] = {
+    {0x00,0x00,0x00,0x00,0x00,0x00,0x00}, // ' '
+    {0x04,0x04,0x04,0x04,0x00,0x04,0x00}, // '!'
+    {0x0A,0x0A,0x00,0x00,0x00,0x00,0x00}, // '"'
+    {0x0A,0x1F,0x0A,0x1F,0x0A,0x00,0x00}, // '#'
+    {0x04,0x0F,0x14,0x0E,0x05,0x1E,0x04}, // '$'
+    {0x18,0x19,0x02,0x04,0x08,0x13,0x03}, // '%'
+    {0x0C,0x12,0x14,0x08,0x15,0x12,0x0D}, // '&'
+    {0x04,0x04,0x00,0x00,0x00,0x00,0x00}, // '''
+    {0x02,0x04,0x08,0x08,0x08,0x04,0x02}, // '('
+    {0x08,0x04,0x02,0x02,0x02,0x04,0x08}, // ')'
+    {0x00,0x04,0x15,0x0E,0x15,0x04,0x00}, // '*'
+    {0x00,0x04,0x04,0x1F,0x04,0x04,0x00}, // '+'
+    {0x00,0x00,0x00,0x00,0x04,0x04,0x08}, // ','
+    {0x00,0x00,0x00,0x1F,0x00,0x00,0x00}, // '-'
+    {0x00,0x00,0x00,0x00,0x00,0x04,0x00}, // '.'
+    {0x00,0x01,0x02,0x04,0x08,0x10,0x00}, // '/'
+    {0x0E,0x11,0x13,0x15,0x19,0x11,0x0E}, // '0'
+    {0x04,0x0C,0x04,0x04,0x04,0x04,0x0E}, // '1'
+    {0x0E,0x11,0x01,0x02,0x04,0x08,0x1F}, // '2'
+    {0x1F,0x02,0x04,0x02,0x01,0x11,0x0E}, // '3'
+    {0x02,0x06,0x0A,0x12,0x1F,0x02,0x02}, // '4'
+    {0x1F,0x10,0x1E,0x01,0x01,0x11,0x0E}, // '5'
+    {0x06,0x08,0x10,0x1E,0x11,0x11,0x0E}, // '6'
+    {0x1F,0x01,0x02,0x04,0x08,0x08,0x08}, // '7'
+    {0x0E,0x11,0x11,0x0E,0x11,0x11,0x0E}, // '8'
+    {0x0E,0x11,0x11,0x0F,0x01,0x02,0x0C}, // '9'
+    {0x00,0x04,0x00,0x00,0x04,0x00,0x00}, // ':'
+    {0x00,0x04,0x00,0x00,0x04,0x04,0x08}, // ';'
+    {0x02,0x04,0x08,0x10,0x08,0x04,0x02}, // '<'
+    {0x00,0x00,0x1F,0x00,0x1F,0x00,0x00}, // '='
+    {0x08,0x04,0x02,0x01,0x02,0x04,0x08}, // '>'
+    {0x0E,0x11,0x01,0x02,0x04,0x00,0x04}, // '?'
+    {0x0E,0x11,0x17,0x15,0x17,0x10,0x0E}, // '@'
+    {0x0E,0x11,0x11,0x1F,0x11,0x11,0x11}, // 'A'
+    {0x1E,0x11,0x11,0x1E,0x11,0x11,0x1E}, // 'B'
+    {0x0E,0x11,0x10,0x10,0x10,0x11,0x0E}, // 'C'
+    {0x1C,0x12,0x11,0x11,0x11,0x12,0x1C}, // 'D'
+    {0x1F,0x10,0x10,0x1E,0x10,0x10,0x1F}, // 'E'
+    {0x1F,0x10,0x10,0x1E,0x10,0x10,0x10}, // 'F'
+    {0x0E,0x11,0x10,0x17,0x11,0x11,0x0F}, // 'G'
+    {0x11,0x11,0x11,0x1F,0x11,0x11,0x11}, // 'H'
+    {0x0E,0x04,0x04,0x04,0x04,0x04,0x0E}, // 'I'
+    {0x07,0x02,0x02,0x02,0x02,0x12,0x0C}, // 'J'
+    {0x11,0x12,0x14,0x18,0x14,0x12,0x11}, // 'K'
+    {0x10,0x10,0x10,0x10,0x10,0x10,0x1F}, // 'L'
+    {0x11,0x1B,0x15,0x15,0x11,0x11,0x11}, // 'M'
+    {0x11,0x11,0x19,0x15,0x13,0x11,0x11}, // 'N'
+    {0x0E,0x11,0x11,0x11,0x11,0x11,0x0E}, // 'O'
+    {0x1E,0x11,0x11,0x1E,0x10,0x10,0x10}, // 'P'
+    {0x0E,0x11,0x11,0x11,0x15,0x12,0x0D}, // 'Q'
+    {0x1E,0x11,0x11,0x1E,0x14,0x12,0x11}, // 'R'
+    {0x0F,0x10,0x10,0x0E,0x01,0x01,0x1E}, // 'S'
+    {0x1F,0x04,0x04,0x04,0x04,0x04,0x04}, // 'T'
+    {0x11,0x11,0x11,0x11,0x11,0x11,0x0E}, // 'U'
+    {0x11,0x11,0x11,0x11,0x11,0x0A,0x04}, // 'V'
+    {0x11,0x11,0x11,0x15,0x15,0x1B,0x11}, // 'W'
+    {0x11,0x11,0x0A,0x04,0x0A,0x11,0x11}, // 'X'
+    {0x11,0x11,0x0A,0x04,0x04,0x04,0x04}, // 'Y'
+    {0x1F,0x01,0x02,0x04,0x08,0x10,0x1F}, // 'Z'
+    {0x0E,0x08,0x08,0x08,0x08,0x08,0x0E}, // '['
+    {0x00,0x10,0x08,0x04,0x02,0x01,0x00}, // '\'
+    {0x0E,0x02,0x02,0x02,0x02,0x02,0x0E}, // ']'
+    {0x04,0x0A,0x11,0x00,0x00,0x00,0x00}, // '^'
+    {0x00,0x00,0x00,0x00,0x00,0x00,0x1F}, // '_'
+    {0x08,0x04,0x00,0x00,0x00,0x00,0x00}, // '`'
+    {0x00,0x00,0x0E,0x01,0x0F,0x11,0x0F}, // 'a'
+    {0x10,0x10,0x16,0x19,0x11,0x11,0x1E}, // 'b'
+    {0x00,0x00,0x0E,0x10,0x10,0x11,0x0E}, // 'c'
+    {0x01,0x01,0x0D,0x13,0x11,0x11,0x0F}, // 'd'
+    {0x00,0x00,0x0E,0x11,0x1F,0x10,0x0E}, // 'e'
+    {0x06,0x09,0x08,0x1C,0x08,0x08,0x08}, // 'f'
+    {0x00,0x0F,0x11,0x11,0x0F,0x01,0x0E}, // 'g'
+    {0x10,0x10,0x16,0x19,0x11,0x11,0x11}, // 'h'
+    {0x04,0x00,0x0C,0x04,0x04,0x04,0x0E}, // 'i'
+    {0x02,0x00,0x06,0x02,0x02,0x12,0x0C}, // 'j'
+    {0x10,0x10,0x12,0x14,0x18,0x14,0x12}, // 'k'
+    {0x0C,0x04,0x04,0x04,0x04,0x04,0x0E}, // 'l'
+    {0x00,0x00,0x1A,0x15,0x15,0x11,0x11}, // 'm'
+    {0x00,0x00,0x16,0x19,0x11,0x11,0x11}, // 'n'
+    {0x00,0x00,0x0E,0x11,0x11,0x11,0x0E}, // 'o'
+    {0x00,0x00,0x1E,0x11,0x1E,0x10,0x10}, // 'p'
+    {0x00,0x00,0x0D,0x13,0x0F,0x01,0x01}, // 'q'
+    {0x00,0x00,0x16,0x19,0x10,0x10,0x10}, // 'r'
+    {0x00,0x00,0x0E,0x10,0x0E,0x01,0x1E}, // 's'
+    {0x08,0x08,0x1C,0x08,0x08,0x09,0x06}, // 't'
+    {0x00,0x00,0x11,0x11,0x11,0x13,0x0D}, // 'u'
+    {0x00,0x00,0x11,0x11,0x11,0x0A,0x04}, // 'v'
+    {0x00,0x00,0x11,0x11,0x15,0x15,0x0A}, // 'w'
+    {0x00,0x00,0x11,0x0A,0x04,0x0A,0x11}, // 'x'
+    {0x00,0x00,0x11,0x11,0x0F,0x01,0x0E}, // 'y'
+    {0x00,0x00,0x1F,0x02,0x04,0x08,0x1F}, // 'z'
+    {0x02,0x04,0x04,0x08,0x04,0x04,0x02}, // '{'
+    {0x04,0x04,0x04,0x04,0x04,0x04,0x04}, // '|'
+    {0x08,0x04,0x04,0x02,0x04,0x04,0x08}, // '}'
+    {0x00,0x00,0x08,0x15,0x02,0x00,0x00}, // '~'
+    {0x00,0x00,0x00,0x00,0x00,0x00,0x00}, // DEL
+};
+
 Renderer::Renderer()
     : m_renderMode(RenderMode::Rasterization)
     , m_width(0)
     , m_height(0)
-    , m_shadowMapSize(2048) {
+    , m_shadowMapSize(2048)
+    , m_debugHUDVisible(false) {
 }
 
 Renderer::~Renderer() {
@@ -331,7 +433,8 @@ bool Renderer::CreateRasterizerStates() {
     D3D11_RASTERIZER_DESC rastDesc = {};
     rastDesc.FillMode = D3D11_FILL_SOLID;
     rastDesc.CullMode = D3D11_CULL_BACK;
-    rastDesc.FrontCounterClockwise = FALSE;
+    // Chunk and mob meshes are authored with CCW winding.
+    rastDesc.FrontCounterClockwise = TRUE;
     rastDesc.DepthBias = 0;
     rastDesc.DepthBiasClamp = 0.0f;
     rastDesc.SlopeScaledDepthBias = 0.0f;
@@ -345,6 +448,47 @@ bool Renderer::CreateRasterizerStates() {
 
     rastDesc.FillMode = D3D11_FILL_WIREFRAME;
     hr = m_device->CreateRasterizerState(&rastDesc, &m_wireframeRasterizer);
+    if (FAILED(hr)) return false;
+
+    // UI should not depend on the 3D pass' winding/culling state.
+    D3D11_RASTERIZER_DESC uiRastDesc = rastDesc;
+    uiRastDesc.FillMode = D3D11_FILL_SOLID;
+    uiRastDesc.CullMode = D3D11_CULL_NONE;
+    uiRastDesc.FrontCounterClockwise = FALSE;
+    hr = m_device->CreateRasterizerState(&uiRastDesc, &m_uiRasterizer);
+    if (FAILED(hr)) return false;
+
+    // Create alpha blend state for UI
+    D3D11_BLEND_DESC blendDesc = {};
+    blendDesc.RenderTarget[0].BlendEnable = TRUE;
+    blendDesc.RenderTarget[0].SrcBlend = D3D11_BLEND_SRC_ALPHA;
+    blendDesc.RenderTarget[0].DestBlend = D3D11_BLEND_INV_SRC_ALPHA;
+    blendDesc.RenderTarget[0].BlendOp = D3D11_BLEND_OP_ADD;
+    blendDesc.RenderTarget[0].SrcBlendAlpha = D3D11_BLEND_ONE;
+    blendDesc.RenderTarget[0].DestBlendAlpha = D3D11_BLEND_ZERO;
+    blendDesc.RenderTarget[0].BlendOpAlpha = D3D11_BLEND_OP_ADD;
+    blendDesc.RenderTarget[0].RenderTargetWriteMask = D3D11_COLOR_WRITE_ENABLE_ALL;
+
+    hr = m_device->CreateBlendState(&blendDesc, &m_alphaBlendState);
+    if (FAILED(hr)) return false;
+
+    // Create depth stencil state for UI (disabled)
+    D3D11_DEPTH_STENCIL_DESC dsDesc = {};
+    dsDesc.DepthEnable = FALSE;
+    dsDesc.DepthWriteMask = D3D11_DEPTH_WRITE_MASK_ALL;
+    dsDesc.DepthFunc = D3D11_COMPARISON_LESS;
+    dsDesc.StencilEnable = FALSE;
+
+    hr = m_device->CreateDepthStencilState(&dsDesc, &m_depthDisabledState);
+    if (FAILED(hr)) return false;
+
+    // Create depth stencil state for transparent objects (read-only depth)
+    dsDesc.DepthEnable = TRUE;
+    dsDesc.DepthWriteMask = D3D11_DEPTH_WRITE_MASK_ZERO;
+    dsDesc.DepthFunc = D3D11_COMPARISON_LESS;
+    dsDesc.StencilEnable = FALSE;
+
+    hr = m_device->CreateDepthStencilState(&dsDesc, &m_depthReadOnlyState);
     return SUCCEEDED(hr);
 }
 
@@ -380,7 +524,11 @@ void Renderer::UpdateConstantBuffer(const Matrix4x4& world, const Matrix4x4& vie
     Vector3 lightTarget(0, 60, 0);
     Matrix4x4 lightView = Matrix4x4::LookAtLH(lightPos, lightTarget, Vector3(0, 1, 0));
     Matrix4x4 lightProj = Matrix4x4::PerspectiveFovLH(1.57f, 1.0f, 1.0f, 500.0f);
-    cb.lightViewProj = (lightView * lightProj).Transpose();
+    // Matrices are built in column-vector form and transposed for the row-vector HLSL path.
+    // To apply View then Projection in HLSL as mul(pos, LightViewProj), we need (Proj * View)^T here.
+    cb.lightViewProj = (lightProj * lightView).Transpose();
+
+    cb.cameraPos = Vector4(0, 0, 0, 1);
 
     D3D11_MAPPED_SUBRESOURCE mapped;
     m_context->Map(m_constantBuffer.Get(), 0, D3D11_MAP_WRITE_DISCARD, 0, &mapped);
@@ -427,6 +575,17 @@ void Renderer::RenderWorld(World* world, Camera& camera) {
 
     // Render world
     world->Render(m_context.Get());
+
+    // --- Transparent Pass ---
+    float blendFactor[4] = { 0.0f, 0.0f, 0.0f, 0.0f };
+    m_context->OMSetBlendState(m_alphaBlendState.Get(), blendFactor, 0xFFFFFFFF);
+    m_context->OMSetDepthStencilState(m_depthReadOnlyState.Get(), 0);
+
+    world->RenderTransparent(m_context.Get());
+
+    // Reset states
+    m_context->OMSetBlendState(nullptr, blendFactor, 0xFFFFFFFF);
+    m_context->OMSetDepthStencilState(nullptr, 0);
 }
 
 void Renderer::RenderMob(Mob* mob, Camera& camera) {
@@ -446,12 +605,6 @@ void Renderer::RenderMob(Mob* mob, Camera& camera) {
 
 void Renderer::RenderUI(Player* player) {
     // Simple UI rendering - draw inventory bar
-    // This is a simplified implementation
-    struct UIVertex {
-        Vector2 position;
-        Vector4 color;
-    };
-
     std::vector<UIVertex> vertices;
     std::vector<uint32_t> indices;
 
@@ -513,10 +666,16 @@ void Renderer::RenderUI(Player* player) {
 
     m_device->CreateBuffer(&ibDesc, &ibData, m_uiIndexBuffer.ReleaseAndGetAddressOf());
 
-    // Render UI
+    // Render UI with alpha blending
     m_context->VSSetShader(m_uiVS.Get(), nullptr, 0);
     m_context->PSSetShader(m_uiPS.Get(), nullptr, 0);
     m_context->IASetInputLayout(m_uiInputLayout.Get());
+    m_context->RSSetState(m_uiRasterizer.Get());
+
+    // Enable alpha blending and disable depth for UI
+    float blendFactor[4] = { 0.0f, 0.0f, 0.0f, 0.0f };
+    m_context->OMSetBlendState(m_alphaBlendState.Get(), blendFactor, 0xFFFFFFFF);
+    m_context->OMSetDepthStencilState(m_depthDisabledState.Get(), 0);
 
     UINT stride = sizeof(UIVertex);
     UINT offset = 0;
@@ -525,4 +684,170 @@ void Renderer::RenderUI(Player* player) {
     m_context->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
 
     m_context->DrawIndexed(static_cast<UINT>(indices.size()), 0, 0);
+
+    // Reset blend state and depth state
+    m_context->OMSetBlendState(nullptr, blendFactor, 0xFFFFFFFF);
+    m_context->OMSetDepthStencilState(nullptr, 0);
+}
+
+bool Renderer::CreateFontResources() {
+    // Font rendering uses simple quads, no texture needed
+    return true;
+}
+
+void Renderer::DrawText(const std::string& text, float x, float y, float scale, const Vector4& color,
+                        std::vector<UIVertex>& vertices, std::vector<uint32_t>& indices) {
+    const float charWidth = 5.0f * scale;
+    const float charHeight = 7.0f * scale;
+    const float pixelScale = scale;
+    const float spacing = 1.0f * scale;
+
+    float cursorX = x;
+
+    for (char c : text) {
+        if (c < 32 || c > 127) c = '?';
+        int charIndex = c - 32;
+
+        // Draw each pixel of the character
+        for (int row = 0; row < 7; row++) {
+            uint8_t rowData = g_fontData[charIndex][row];
+            for (int col = 0; col < 5; col++) {
+                if (rowData & (1 << (4 - col))) {
+                    float px = cursorX + col * pixelScale;
+                    float py = y + row * pixelScale;
+
+                    // Convert to NDC
+                    float ndcX = (px / m_width) * 2.0f - 1.0f;
+                    float ndcY = 1.0f - (py / m_height) * 2.0f;
+                    float ndcW = (pixelScale / m_width) * 2.0f;
+                    float ndcH = (pixelScale / m_height) * 2.0f;
+
+                    uint32_t baseIdx = static_cast<uint32_t>(vertices.size());
+
+                    vertices.push_back({ Vector2(ndcX, ndcY), color });
+                    vertices.push_back({ Vector2(ndcX + ndcW, ndcY), color });
+                    vertices.push_back({ Vector2(ndcX + ndcW, ndcY - ndcH), color });
+                    vertices.push_back({ Vector2(ndcX, ndcY - ndcH), color });
+
+                    indices.push_back(baseIdx);
+                    indices.push_back(baseIdx + 1);
+                    indices.push_back(baseIdx + 2);
+                    indices.push_back(baseIdx);
+                    indices.push_back(baseIdx + 2);
+                    indices.push_back(baseIdx + 3);
+                }
+            }
+        }
+
+        cursorX += charWidth + spacing;
+    }
+}
+
+void Renderer::RenderDebugHUD(const DebugInfo& debugInfo) {
+    if (!m_debugHUDVisible) return;
+
+    std::vector<UIVertex> vertices;
+    std::vector<uint32_t> indices;
+
+    // Draw semi-transparent background
+    float bgWidth = 300.0f;
+    float bgHeight = 100.0f;
+    float bgX = 10.0f;
+    float bgY = 10.0f;
+
+    float ndcX = (bgX / m_width) * 2.0f - 1.0f;
+    float ndcY = 1.0f - (bgY / m_height) * 2.0f;
+    float ndcW = (bgWidth / m_width) * 2.0f;
+    float ndcH = (bgHeight / m_height) * 2.0f;
+
+    Vector4 bgColor(0.0f, 0.0f, 0.0f, 0.5f);
+    uint32_t baseIdx = static_cast<uint32_t>(vertices.size());
+
+    vertices.push_back({ Vector2(ndcX, ndcY), bgColor });
+    vertices.push_back({ Vector2(ndcX + ndcW, ndcY), bgColor });
+    vertices.push_back({ Vector2(ndcX + ndcW, ndcY - ndcH), bgColor });
+    vertices.push_back({ Vector2(ndcX, ndcY - ndcH), bgColor });
+
+    indices.push_back(baseIdx);
+    indices.push_back(baseIdx + 1);
+    indices.push_back(baseIdx + 2);
+    indices.push_back(baseIdx);
+    indices.push_back(baseIdx + 2);
+    indices.push_back(baseIdx + 3);
+
+    // Draw FPS text
+    char fpsText[64];
+    sprintf(fpsText, "FPS: %.1f", debugInfo.fps);
+    DrawText(fpsText, 15.0f, 15.0f, 2.0f, Vector4(1.0f, 1.0f, 1.0f, 1.0f), vertices, indices);
+
+    // Draw world stats
+    char chunkText[64];
+    sprintf(chunkText, "Chunks: %d", debugInfo.loadedChunkCount);
+    DrawText(chunkText, 15.0f, 35.0f, 2.0f, Vector4(0.9f, 0.9f, 0.9f, 1.0f), vertices, indices);
+
+    char indexText[128];
+    sprintf(indexText, "Idx: %llu / %llu",
+            static_cast<unsigned long long>(debugInfo.solidIndexCount),
+            static_cast<unsigned long long>(debugInfo.transparentIndexCount));
+    DrawText(indexText, 15.0f, 55.0f, 2.0f, Vector4(0.9f, 0.9f, 0.9f, 1.0f), vertices, indices);
+
+    // Draw looked-at block info
+    if (debugInfo.hasLookedAtBlock) {
+        const char* blockName = BlockDatabase::GetProperties(debugInfo.lookedAtBlockType).name;
+        char blockText[128];
+        sprintf(blockText, "Looking at: %s", blockName);
+        DrawText(blockText, 15.0f, 75.0f, 2.0f, Vector4(1.0f, 1.0f, 0.8f, 1.0f), vertices, indices);
+    } else {
+        DrawText("Looking at: Nothing", 15.0f, 75.0f, 2.0f, Vector4(0.7f, 0.7f, 0.7f, 1.0f), vertices, indices);
+    }
+
+    if (vertices.empty()) return;
+
+    // Create/update UI buffers
+    D3D11_BUFFER_DESC vbDesc = {};
+    vbDesc.Usage = D3D11_USAGE_DYNAMIC;
+    vbDesc.ByteWidth = static_cast<UINT>(vertices.size() * sizeof(UIVertex));
+    vbDesc.BindFlags = D3D11_BIND_VERTEX_BUFFER;
+    vbDesc.CPUAccessFlags = D3D11_CPU_ACCESS_WRITE;
+
+    D3D11_SUBRESOURCE_DATA vbData = {};
+    vbData.pSysMem = vertices.data();
+
+    ComPtr<ID3D11Buffer> debugVB;
+    m_device->CreateBuffer(&vbDesc, &vbData, &debugVB);
+
+    D3D11_BUFFER_DESC ibDesc = {};
+    ibDesc.Usage = D3D11_USAGE_DYNAMIC;
+    ibDesc.ByteWidth = static_cast<UINT>(indices.size() * sizeof(uint32_t));
+    ibDesc.BindFlags = D3D11_BIND_INDEX_BUFFER;
+    ibDesc.CPUAccessFlags = D3D11_CPU_ACCESS_WRITE;
+
+    D3D11_SUBRESOURCE_DATA ibData = {};
+    ibData.pSysMem = indices.data();
+
+    ComPtr<ID3D11Buffer> debugIB;
+    m_device->CreateBuffer(&ibDesc, &ibData, &debugIB);
+
+    // Render debug HUD with alpha blending
+    m_context->VSSetShader(m_uiVS.Get(), nullptr, 0);
+    m_context->PSSetShader(m_uiPS.Get(), nullptr, 0);
+    m_context->IASetInputLayout(m_uiInputLayout.Get());
+    m_context->RSSetState(m_uiRasterizer.Get());
+
+    // Enable alpha blending and disable depth for UI
+    float blendFactor[4] = { 0.0f, 0.0f, 0.0f, 0.0f };
+    m_context->OMSetBlendState(m_alphaBlendState.Get(), blendFactor, 0xFFFFFFFF);
+    m_context->OMSetDepthStencilState(m_depthDisabledState.Get(), 0);
+
+    UINT stride = sizeof(UIVertex);
+    UINT offset = 0;
+    m_context->IASetVertexBuffers(0, 1, debugVB.GetAddressOf(), &stride, &offset);
+    m_context->IASetIndexBuffer(debugIB.Get(), DXGI_FORMAT_R32_UINT, 0);
+    m_context->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
+
+    m_context->DrawIndexed(static_cast<UINT>(indices.size()), 0, 0);
+
+    // Reset blend state and depth state
+    m_context->OMSetBlendState(nullptr, blendFactor, 0xFFFFFFFF);
+    m_context->OMSetDepthStencilState(nullptr, 0);
 }

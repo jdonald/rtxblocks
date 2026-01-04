@@ -36,9 +36,14 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
     // Create world
     World world(12345);
 
-    // Create player
+    // Create player - spawn above terrain
     Player player;
-    player.SetPosition(Vector3(0, 100, 0));
+    int spawnHeight = world.GetTerrainHeight(0, 0);
+    float spawnY = static_cast<float>(spawnHeight + 10);
+    if (spawnY > CHUNK_HEIGHT - 2) {
+        spawnY = static_cast<float>(CHUNK_HEIGHT - 2);
+    }
+    player.SetPosition(Vector3(0, spawnY, 0));
 
     // Create some cows
     std::vector<std::unique_ptr<Mob>> mobs;
@@ -49,13 +54,19 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
         mobs.push_back(std::move(cow));
     }
 
-    // Show window and capture mouse
+    // Show window
     window.Show();
-    window.SetMouseCapture(true);
+    bool mouseCaptured = true;
+    window.SetMouseCapture(mouseCaptured);
 
     // Main loop
     auto lastTime = std::chrono::high_resolution_clock::now();
     bool running = true;
+
+    // FPS calculation
+    float fpsAccumulator = 0.0f;
+    int frameCount = 0;
+    float currentFPS = 60.0f;
 
     while (running) {
         // Calculate delta time
@@ -66,6 +77,15 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
         // Cap delta time to avoid huge jumps
         if (deltaTime > 0.1f) deltaTime = 0.1f;
 
+        // Update FPS counter
+        fpsAccumulator += deltaTime;
+        frameCount++;
+        if (fpsAccumulator >= 0.5f) {
+            currentFPS = static_cast<float>(frameCount) / fpsAccumulator;
+            fpsAccumulator = 0.0f;
+            frameCount = 0;
+        }
+
         // Process window messages
         if (!window.ProcessMessages()) {
             running = false;
@@ -74,9 +94,18 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
 
         // Toggle mouse capture with ESC
         if (window.WasKeyPressed(VK_ESCAPE)) {
-            static bool mouseCaptured = true;
             mouseCaptured = !mouseCaptured;
             window.SetMouseCapture(mouseCaptured);
+        }
+
+        // Toggle debug HUD with F3
+        if (window.WasKeyPressed(VK_F3)) {
+            renderer.ToggleDebugHUD();
+        }
+
+        // Toggle fullscreen with F11
+        if (window.WasKeyPressed(VK_F11)) {
+            window.ToggleFullscreen();
         }
 
         // Toggle render mode (stubbed raytracing)
@@ -118,6 +147,32 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
         }
 
         renderer.RenderUI(&player);
+
+        // Render debug HUD if enabled
+        if (renderer.IsDebugHUDVisible()) {
+            DebugInfo debugInfo;
+            debugInfo.fps = currentFPS;
+
+            World::DebugStats worldStats = world.GetDebugStats();
+            debugInfo.loadedChunkCount = worldStats.chunkCount;
+            debugInfo.solidIndexCount = worldStats.solidIndexCount;
+            debugInfo.transparentIndexCount = worldStats.transparentIndexCount;
+
+            // Raycast to find looked-at block
+            Vector3 hitPos, hitNormal;
+            Block hitBlock;
+            Camera& cam = player.GetCamera();
+            if (world.Raycast(cam.GetPosition(), cam.GetForward(), 50.0f, hitPos, hitNormal, hitBlock)) {
+                debugInfo.hasLookedAtBlock = true;
+                debugInfo.lookedAtBlockType = hitBlock.type;
+                debugInfo.lookedAtBlockPos = hitPos;
+            } else {
+                debugInfo.hasLookedAtBlock = false;
+            }
+
+            renderer.RenderDebugHUD(debugInfo);
+        }
+
         renderer.EndFrame();
     }
 

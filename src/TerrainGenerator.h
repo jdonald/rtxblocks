@@ -8,6 +8,7 @@ class TerrainGenerator {
 public:
     TerrainGenerator(unsigned int seed = 12345);
 
+    int GetTerrainHeight(int worldX, int worldZ) const;
     void GenerateChunk(Chunk* chunk);
 
 private:
@@ -17,7 +18,6 @@ private:
 
     void PlaceTree(Chunk* chunk, int worldX, int worldY, int worldZ);
 
-    int GetTerrainHeight(int worldX, int worldZ) const;
     float GetMoisture(int worldX, int worldZ) const;
 
     PerlinNoise m_heightNoise;

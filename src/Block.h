@@ -30,7 +30,7 @@ struct Block {
     explicit Block(BlockType t) : type(t) {}
 
     bool IsAir() const { return type == BlockType::Air; }
-    bool IsTransparent() const { return type == BlockType::Air || type == BlockType::Water || type == BlockType::Torch; }
+    bool IsTransparent() const { return type == BlockType::Air || type == BlockType::Water || type == BlockType::Leaves || type == BlockType::Torch; }
     bool IsLiquid() const { return type == BlockType::Water; }
     bool IsLightSource() const { return type == BlockType::Torch; }
 };

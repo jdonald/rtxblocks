@@ -67,11 +67,11 @@ bool Chunk::ShouldRenderFace(int x, int y, int z, BlockFace::Face face) const {
         return false;
     }
 
-    // Render if neighbor is air or different transparent block
-    return neighbor.IsAir() || neighbor.type != currentBlock.type;
+    // Render if neighbor is air, water (treated as air), or different transparent block
+    return neighbor.IsAir() || neighbor.IsLiquid() || neighbor.type != currentBlock.type;
 }
 
-void Chunk::AddBlockFace(const Vector3& pos, BlockFace::Face face, const Vector4& color) {
+void Chunk::AddBlockFace(const Vector3& pos, BlockFace::Face face, const Vector4& color, bool isTransparent) {
     Vector3 normals[6] = {
         Vector3(0, 0, 1),   // Front
         Vector3(0, 0, -1),  // Back
@@ -112,7 +112,10 @@ void Chunk::AddBlockFace(const Vector3& pos, BlockFace::Face face, const Vector4
         Vector2(0, 1), Vector2(1, 1), Vector2(1, 0), Vector2(0, 0)
     };
 
-    uint32_t baseIndex = static_cast<uint32_t>(m_vertices.size());
+    auto& currentVertices = isTransparent ? m_transparentVertices : m_vertices;
+    auto& currentIndices = isTransparent ? m_transparentIndices : m_indices;
+
+    uint32_t baseIndex = static_cast<uint32_t>(currentVertices.size());
     Vector3 normal = normals[face];
 
     for (int i = 0; i < 4; i++) {
@@ -121,20 +124,22 @@ void Chunk::AddBlockFace(const Vector3& pos, BlockFace::Face face, const Vector4
         v.normal = normal;
         v.color = color;
         v.texCoord = texCoords[i];
-        m_vertices.push_back(v);
+        currentVertices.push_back(v);
     }
 
-    m_indices.push_back(baseIndex);
-    m_indices.push_back(baseIndex + 1);
-    m_indices.push_back(baseIndex + 2);
-    m_indices.push_back(baseIndex);
-    m_indices.push_back(baseIndex + 2);
-    m_indices.push_back(baseIndex + 3);
+    currentIndices.push_back(baseIndex);
+    currentIndices.push_back(baseIndex + 1);
+    currentIndices.push_back(baseIndex + 2);
+    currentIndices.push_back(baseIndex);
+    currentIndices.push_back(baseIndex + 2);
+    currentIndices.push_back(baseIndex + 3);
 }
 
 void Chunk::GenerateMesh() {
     m_vertices.clear();
     m_indices.clear();
+    m_transparentVertices.clear();
+    m_transparentIndices.clear();
 
     // Get chunk world position offset
     Vector3 chunkOffset = GetWorldPosition();
@@ -143,7 +148,7 @@ void Chunk::GenerateMesh() {
         for (int y = 0; y < CHUNK_HEIGHT; y++) {
             for (int z = 0; z < CHUNK_SIZE; z++) {
                 Block block = GetBlock(x, y, z);
-                if (block.IsAir()) continue;
+                if (block.IsAir()) continue; // Skip air blocks
 
                 // Position in world coordinates (not just chunk-local)
                 Vector3 blockPos(chunkOffset.x + x, y, chunkOffset.z + z);
@@ -151,7 +156,7 @@ void Chunk::GenerateMesh() {
 
                 for (int face = 0; face < 6; face++) {
                     if (ShouldRenderFace(x, y, z, static_cast<BlockFace::Face>(face))) {
-                        AddBlockFace(blockPos, static_cast<BlockFace::Face>(face), props.color);
+                        AddBlockFace(blockPos, static_cast<BlockFace::Face>(face), props.color, block.IsTransparent());
                     }
                 }
             }
@@ -169,33 +174,61 @@ void Chunk::UpdateBuffer(ID3D11Device* device) {
 
     if (m_vertices.empty()) {
         m_indexCount = 0;
-        m_needsBufferUpdate = false;
-        return;
+        m_vertexBuffer.Reset();
+        m_indexBuffer.Reset();
+    } else {
+        // Create vertex buffer
+        D3D11_BUFFER_DESC vbDesc = {};
+        vbDesc.Usage = D3D11_USAGE_DEFAULT;
+        vbDesc.ByteWidth = static_cast<UINT>(m_vertices.size() * sizeof(Vertex));
+        vbDesc.BindFlags = D3D11_BIND_VERTEX_BUFFER;
+
+        D3D11_SUBRESOURCE_DATA vbData = {};
+        vbData.pSysMem = m_vertices.data();
+
+        device->CreateBuffer(&vbDesc, &vbData, m_vertexBuffer.ReleaseAndGetAddressOf());
+
+        // Create index buffer
+        D3D11_BUFFER_DESC ibDesc = {};
+        ibDesc.Usage = D3D11_USAGE_DEFAULT;
+        ibDesc.ByteWidth = static_cast<UINT>(m_indices.size() * sizeof(uint32_t));
+        ibDesc.BindFlags = D3D11_BIND_INDEX_BUFFER;
+
+        D3D11_SUBRESOURCE_DATA ibData = {};
+        ibData.pSysMem = m_indices.data();
+
+        device->CreateBuffer(&ibDesc, &ibData, m_indexBuffer.ReleaseAndGetAddressOf());
+
+        m_indexCount = static_cast<uint32_t>(m_indices.size());
+    }
+    
+    // Create transparent vertex buffer
+    if (m_transparentVertices.empty()) {
+        m_transparentIndexCount = 0;
+        m_transparentVertexBuffer.Reset();
+        m_transparentIndexBuffer.Reset();
+    } else {
+        D3D11_BUFFER_DESC vbDesc = {};
+        vbDesc.Usage = D3D11_USAGE_DEFAULT;
+        vbDesc.ByteWidth = static_cast<UINT>(m_transparentVertices.size() * sizeof(Vertex));
+        vbDesc.BindFlags = D3D11_BIND_VERTEX_BUFFER;
+        
+        D3D11_SUBRESOURCE_DATA vbData = {};
+        vbData.pSysMem = m_transparentVertices.data();
+        device->CreateBuffer(&vbDesc, &vbData, m_transparentVertexBuffer.ReleaseAndGetAddressOf());
+
+        D3D11_BUFFER_DESC ibDesc = {};
+        ibDesc.Usage = D3D11_USAGE_DEFAULT;
+        ibDesc.ByteWidth = static_cast<UINT>(m_transparentIndices.size() * sizeof(uint32_t));
+        ibDesc.BindFlags = D3D11_BIND_INDEX_BUFFER;
+
+        D3D11_SUBRESOURCE_DATA ibData = {};
+        ibData.pSysMem = m_transparentIndices.data();
+        device->CreateBuffer(&ibDesc, &ibData, m_transparentIndexBuffer.ReleaseAndGetAddressOf());
+
+        m_transparentIndexCount = static_cast<uint32_t>(m_transparentIndices.size());
     }
 
-    // Create vertex buffer
-    D3D11_BUFFER_DESC vbDesc = {};
-    vbDesc.Usage = D3D11_USAGE_DEFAULT;
-    vbDesc.ByteWidth = static_cast<UINT>(m_vertices.size() * sizeof(Vertex));
-    vbDesc.BindFlags = D3D11_BIND_VERTEX_BUFFER;
-
-    D3D11_SUBRESOURCE_DATA vbData = {};
-    vbData.pSysMem = m_vertices.data();
-
-    device->CreateBuffer(&vbDesc, &vbData, m_vertexBuffer.ReleaseAndGetAddressOf());
-
-    // Create index buffer
-    D3D11_BUFFER_DESC ibDesc = {};
-    ibDesc.Usage = D3D11_USAGE_DEFAULT;
-    ibDesc.ByteWidth = static_cast<UINT>(m_indices.size() * sizeof(uint32_t));
-    ibDesc.BindFlags = D3D11_BIND_INDEX_BUFFER;
-
-    D3D11_SUBRESOURCE_DATA ibData = {};
-    ibData.pSysMem = m_indices.data();
-
-    device->CreateBuffer(&ibDesc, &ibData, m_indexBuffer.ReleaseAndGetAddressOf());
-
-    m_indexCount = static_cast<uint32_t>(m_indices.size());
     m_needsBufferUpdate = false; // Buffer is now up to date
 }
 
@@ -212,4 +245,19 @@ void Chunk::Render(ID3D11DeviceContext* context) {
     context->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
 
     context->DrawIndexed(m_indexCount, 0, 0);
+}
+
+void Chunk::RenderTransparent(ID3D11DeviceContext* context) {
+    if (!m_transparentVertexBuffer || !m_transparentIndexBuffer || m_transparentIndexCount == 0) {
+        return;
+    }
+
+    UINT stride = sizeof(Vertex);
+    UINT offset = 0;
+
+    context->IASetVertexBuffers(0, 1, m_transparentVertexBuffer.GetAddressOf(), &stride, &offset);
+    context->IASetIndexBuffer(m_transparentIndexBuffer.Get(), DXGI_FORMAT_R32_UINT, 0);
+    context->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
+
+    context->DrawIndexed(m_transparentIndexCount, 0, 0);
 }

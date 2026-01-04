@@ -20,6 +20,11 @@ public:
     bool WasKeyPressed(int vkCode) const;
     void GetMouseDelta(int& dx, int& dy);
     void SetMouseCapture(bool capture);
+    bool HasFocus() const { return m_hasFocus; }
+
+    // Fullscreen support
+    void ToggleFullscreen();
+    bool IsFullscreen() const { return m_isFullscreen; }
 
 private:
     static LRESULT CALLBACK WindowProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam);
@@ -35,4 +40,10 @@ private:
     int m_lastMouseX;
     int m_lastMouseY;
     bool m_firstMouse;
+    bool m_hasFocus;
+
+    // Fullscreen support
+    bool m_isFullscreen;
+    RECT m_windowedRect;
+    DWORD m_windowedStyle;
 };

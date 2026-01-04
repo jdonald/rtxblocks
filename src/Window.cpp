@@ -9,9 +9,13 @@ Window::Window(int width, int height, const std::string& title)
     , m_mouseCaptured(false)
     , m_lastMouseX(0)
     , m_lastMouseY(0)
-    , m_firstMouse(true) {
+    , m_firstMouse(true)
+    , m_hasFocus(true)
+    , m_isFullscreen(false)
+    , m_windowedStyle(0) {
     std::memset(m_keys, 0, sizeof(m_keys));
     std::memset(m_keysPressed, 0, sizeof(m_keysPressed));
+    std::memset(&m_windowedRect, 0, sizeof(m_windowedRect));
 }
 
 Window::~Window() {
@@ -88,7 +92,7 @@ bool Window::WasKeyPressed(int vkCode) const {
 }
 
 void Window::GetMouseDelta(int& dx, int& dy) {
-    if (!m_mouseCaptured) {
+    if (!m_mouseCaptured || !m_hasFocus) {
         dx = 0;
         dy = 0;
         return;
@@ -172,7 +176,77 @@ LRESULT Window::HandleMessage(UINT msg, WPARAM wParam, LPARAM lParam) {
         m_width = LOWORD(lParam);
         m_height = HIWORD(lParam);
         return 0;
+
+    case WM_ACTIVATEAPP:
+        m_hasFocus = (wParam == TRUE);
+        if (m_hasFocus) {
+            // Regained focus - restore cursor state
+            if (m_mouseCaptured) {
+                ShowCursor(FALSE);
+                m_firstMouse = true;
+            }
+        } else {
+            // Lost focus - show cursor
+            if (m_mouseCaptured) {
+                ShowCursor(TRUE);
+            }
+        }
+        return 0;
+
+    case WM_SETFOCUS:
+        m_hasFocus = true;
+        if (m_mouseCaptured) {
+            ShowCursor(FALSE);
+            m_firstMouse = true;
+        }
+        return 0;
+
+    case WM_KILLFOCUS:
+        m_hasFocus = false;
+        if (m_mouseCaptured) {
+            ShowCursor(TRUE);
+        }
+        return 0;
+
+    case WM_LBUTTONDOWN:
+        if (!m_mouseCaptured) {
+            SetMouseCapture(true);
+        }
+        return 0;
     }
 
     return DefWindowProc(m_hwnd, msg, wParam, lParam);
+}
+
+void Window::ToggleFullscreen() {
+    if (!m_isFullscreen) {
+        // Save current window rect and style
+        m_windowedStyle = GetWindowLong(m_hwnd, GWL_STYLE);
+        GetWindowRect(m_hwnd, &m_windowedRect);
+
+        // Get monitor info
+        HMONITOR hMon = MonitorFromWindow(m_hwnd, MONITOR_DEFAULTTONEAREST);
+        MONITORINFO mi = { sizeof(mi) };
+        GetMonitorInfo(hMon, &mi);
+
+        // Set fullscreen style and position
+        SetWindowLong(m_hwnd, GWL_STYLE, WS_POPUP | WS_VISIBLE);
+        SetWindowPos(m_hwnd, HWND_TOP,
+                     mi.rcMonitor.left, mi.rcMonitor.top,
+                     mi.rcMonitor.right - mi.rcMonitor.left,
+                     mi.rcMonitor.bottom - mi.rcMonitor.top,
+                     SWP_FRAMECHANGED | SWP_NOOWNERZORDER);
+
+        m_isFullscreen = true;
+    } else {
+        // Restore windowed mode
+        SetWindowLong(m_hwnd, GWL_STYLE, m_windowedStyle);
+        SetWindowPos(m_hwnd, HWND_NOTOPMOST,
+                     m_windowedRect.left, m_windowedRect.top,
+                     m_windowedRect.right - m_windowedRect.left,
+                     m_windowedRect.bottom - m_windowedRect.top,
+                     SWP_FRAMECHANGED | SWP_NOOWNERZORDER);
+
+        m_isFullscreen = false;
+    }
 }

@@ -1,8 +1,10 @@
 #pragma once
 #include "MathUtils.h"
 #include "Camera.h"
+#include "Block.h"
 #include <d3d11.h>
 #include <wrl/client.h>
+#include <cstdint>
 #include <string>
 #include <vector>
 
@@ -12,6 +14,22 @@ class Window;
 class World;
 class Player;
 class Mob;
+
+struct DebugInfo {
+    float fps;
+    bool hasLookedAtBlock;
+    BlockType lookedAtBlockType;
+    Vector3 lookedAtBlockPos;
+    int loadedChunkCount;
+    uint64_t solidIndexCount;
+    uint64_t transparentIndexCount;
+};
+
+// UI vertex structure for 2D rendering
+struct UIVertex {
+    Vector2 position;
+    Vector4 color;
+};
 
 enum class RenderMode {
     Rasterization,
@@ -41,6 +59,11 @@ public:
     void RenderWorld(World* world, Camera& camera);
     void RenderMob(Mob* mob, Camera& camera);
     void RenderUI(Player* player);
+    void RenderDebugHUD(const DebugInfo& debugInfo);
+
+    void SetDebugHUDVisible(bool visible) { m_debugHUDVisible = visible; }
+    bool IsDebugHUDVisible() const { return m_debugHUDVisible; }
+    void ToggleDebugHUD() { m_debugHUDVisible = !m_debugHUDVisible; }
 
     void SetRenderMode(RenderMode mode) { m_renderMode = mode; }
     RenderMode GetRenderMode() const { return m_renderMode; }
@@ -92,6 +115,10 @@ private:
 
     ComPtr<ID3D11RasterizerState> m_solidRasterizer;
     ComPtr<ID3D11RasterizerState> m_wireframeRasterizer;
+    ComPtr<ID3D11RasterizerState> m_uiRasterizer;
+    ComPtr<ID3D11BlendState> m_alphaBlendState;
+    ComPtr<ID3D11DepthStencilState> m_depthDisabledState;
+    ComPtr<ID3D11DepthStencilState> m_depthReadOnlyState;
 
     // UI rendering
     ComPtr<ID3D11Buffer> m_uiVertexBuffer;
@@ -100,6 +127,14 @@ private:
     RenderMode m_renderMode;
     int m_width;
     int m_height;
+    bool m_debugHUDVisible;
+
+    // Font rendering
+    ComPtr<ID3D11Texture2D> m_fontTexture;
+    ComPtr<ID3D11ShaderResourceView> m_fontSRV;
+    bool CreateFontResources();
+    void DrawText(const std::string& text, float x, float y, float scale, const Vector4& color,
+                  std::vector<UIVertex>& vertices, std::vector<uint32_t>& indices);
 
     void RenderShadowPass(World* world);
     void UpdateConstantBuffer(const Matrix4x4& world, const Matrix4x4& view, const Matrix4x4& proj);

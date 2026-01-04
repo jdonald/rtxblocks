@@ -32,6 +32,7 @@ public:
     void UpdateBuffer(ID3D11Device* device);
 
     void Render(ID3D11DeviceContext* context);
+    void RenderTransparent(ID3D11DeviceContext* context);
 
     bool NeedsMeshUpdate() const { return m_needsMeshUpdate; }
     void MarkForMeshUpdate() { m_needsMeshUpdate = true; m_needsBufferUpdate = true; }
@@ -40,6 +41,9 @@ public:
     int GetChunkX() const { return m_chunkX; }
     int GetChunkZ() const { return m_chunkZ; }
 
+    uint32_t GetSolidIndexCount() const { return m_indexCount; }
+    uint32_t GetTransparentIndexCount() const { return m_transparentIndexCount; }
+
     Vector3 GetWorldPosition() const {
         return Vector3(m_chunkX * CHUNK_SIZE, 0, m_chunkZ * CHUNK_SIZE);
     }
@@ -47,19 +51,27 @@ public:
     bool IsEmpty() const { return m_isEmpty; }
 
 private:
-    void AddBlockFace(const Vector3& pos, BlockFace::Face face, const Vector4& color);
+    void AddBlockFace(const Vector3& pos, BlockFace::Face face, const Vector4& color, bool isTransparent);
     bool ShouldRenderFace(int x, int y, int z, BlockFace::Face face) const;
 
     int m_chunkX, m_chunkZ;
     Block m_blocks[CHUNK_SIZE][CHUNK_HEIGHT][CHUNK_SIZE];
+    
+    // Solid geometry
     std::vector<Vertex> m_vertices;
     std::vector<uint32_t> m_indices;
-
     ComPtr<ID3D11Buffer> m_vertexBuffer;
     ComPtr<ID3D11Buffer> m_indexBuffer;
+    uint32_t m_indexCount;
+
+    // Transparent geometry
+    std::vector<Vertex> m_transparentVertices;
+    std::vector<uint32_t> m_transparentIndices;
+    ComPtr<ID3D11Buffer> m_transparentVertexBuffer;
+    ComPtr<ID3D11Buffer> m_transparentIndexBuffer;
+    uint32_t m_transparentIndexCount;
 
     bool m_needsMeshUpdate;
     bool m_needsBufferUpdate;
     bool m_isEmpty;
-    uint32_t m_indexCount;
 };
