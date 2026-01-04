@@ -16,6 +16,7 @@ public:
 
     Block GetBlock(int worldX, int worldY, int worldZ) const;
     void SetBlock(int worldX, int worldY, int worldZ, BlockType type);
+    int GetTerrainHeight(int worldX, int worldZ) const;
 
     bool Raycast(const Vector3& origin, const Vector3& direction, float maxDistance,
                  Vector3& hitPos, Vector3& hitNormal, Block& hitBlock);

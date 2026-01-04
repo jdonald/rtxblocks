@@ -38,7 +38,12 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
 
     // Create player - spawn above terrain
     Player player;
-    player.SetPosition(Vector3(0, 80, 0)); // Start closer to the ground
+    int spawnHeight = world.GetTerrainHeight(0, 0);
+    float spawnY = static_cast<float>(spawnHeight + 10);
+    if (spawnY > CHUNK_HEIGHT - 2) {
+        spawnY = static_cast<float>(CHUNK_HEIGHT - 2);
+    }
+    player.SetPosition(Vector3(0, spawnY, 0));
 
     // Create some cows
     std::vector<std::unique_ptr<Mob>> mobs;
@@ -151,7 +156,7 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
             Vector3 hitPos, hitNormal;
             Block hitBlock;
             Camera& cam = player.GetCamera();
-            if (world.Raycast(cam.GetPosition(), cam.GetForward(), 10.0f, hitPos, hitNormal, hitBlock)) {
+            if (world.Raycast(cam.GetPosition(), cam.GetForward(), 50.0f, hitPos, hitNormal, hitBlock)) {
                 debugInfo.hasLookedAtBlock = true;
                 debugInfo.lookedAtBlockType = hitBlock.type;
                 debugInfo.lookedAtBlockPos = hitPos;

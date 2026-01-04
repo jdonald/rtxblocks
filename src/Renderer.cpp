@@ -433,8 +433,7 @@ bool Renderer::CreateRasterizerStates() {
     D3D11_RASTERIZER_DESC rastDesc = {};
     rastDesc.FillMode = D3D11_FILL_SOLID;
     rastDesc.CullMode = D3D11_CULL_BACK;
-    // Block faces are defined with counter-clockwise winding in our LH system.
-    rastDesc.FrontCounterClockwise = TRUE;
+    rastDesc.FrontCounterClockwise = FALSE;
     rastDesc.DepthBias = 0;
     rastDesc.DepthBiasClamp = 0.0f;
     rastDesc.SlopeScaledDepthBias = 0.0f;

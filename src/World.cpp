@@ -130,6 +130,10 @@ void World::SetBlock(int worldX, int worldY, int worldZ, BlockType type) {
     }
 }
 
+int World::GetTerrainHeight(int worldX, int worldZ) const {
+    return m_terrainGenerator.GetTerrainHeight(worldX, worldZ);
+}
+
 bool World::Raycast(const Vector3& origin, const Vector3& direction, float maxDistance,
                     Vector3& hitPos, Vector3& hitNormal, Block& hitBlock) {
     Vector3 pos = origin;

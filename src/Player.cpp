@@ -123,7 +123,7 @@ void Player::UpdateBlockInteraction(Window* window, World* world, SoundSystem* s
     Vector3 hitPos, hitNormal;
     Block hitBlock;
 
-    if (world->Raycast(rayOrigin, rayDir, 10.0f, hitPos, hitNormal, hitBlock)) {
+    if (world->Raycast(rayOrigin, rayDir, 50.0f, hitPos, hitNormal, hitBlock)) {
         // Play hit sound while holding left click
         if (leftClick && soundSystem) {
             if (!m_leftClickPressed) {
