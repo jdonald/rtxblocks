@@ -10,6 +10,7 @@
 #include <sstream>
 #include <vector>
 #include <cstring>
+#include <cmath>
 
 namespace {
 struct CameraCB {
@@ -21,7 +22,8 @@ struct CameraCB {
     float pad2;
     float up[3];
     float pad3;
-    float viewport[2];
+    float tanHalfFov;
+    float aspect;
     float pad4[2];
 };
 
@@ -1610,8 +1612,12 @@ void DX12Renderer::UpdateCameraCB(const Camera& camera) {
     cb.up[0] = up.x;
     cb.up[1] = up.y;
     cb.up[2] = up.z;
-    cb.viewport[0] = static_cast<float>(m_width);
-    cb.viewport[1] = static_cast<float>(m_height);
+    float fov = camera.GetFov();
+    if (fov <= 0.001f) {
+        fov = 1.0f;
+    }
+    cb.tanHalfFov = tanf(fov * 0.5f);
+    cb.aspect = camera.GetAspectRatio();
 
     void* mapped = nullptr;
     m_cameraCB->Map(0, nullptr, &mapped);

@@ -19,7 +19,8 @@ cbuffer CameraCB : register(b0) {
     float pad2;
     float3 camUp;
     float pad3;
-    float2 viewport;
+    float tanHalfFov;
+    float aspect;
     float2 pad4;
 };
 
@@ -35,7 +36,8 @@ void RayGen() {
     float2 screen = uv * 2.0f - 1.0f;
     screen.y = -screen.y;
 
-    float3 dir = normalize(camForward + screen.x * camRight + screen.y * camUp);
+    float2 scaled = float2(screen.x * aspect * tanHalfFov, screen.y * tanHalfFov);
+    float3 dir = normalize(camForward + scaled.x * camRight + scaled.y * camUp);
 
     RayDesc ray;
     ray.Origin = camOrigin;

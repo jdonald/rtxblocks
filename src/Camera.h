@@ -30,6 +30,8 @@ public:
 
     float GetYaw() const { return m_yaw; }
     float GetPitch() const { return m_pitch; }
+    float GetFov() const { return m_fov; }
+    float GetAspectRatio() const { return m_aspectRatio; }
 
 private:
     Vector3 m_position;

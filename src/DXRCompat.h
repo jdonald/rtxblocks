@@ -3,6 +3,7 @@
 #include <d3d12.h>
 
 // Forward declarations for DXR-related types missing from older headers.
+#if !defined(__ID3D12Device5_INTERFACE_DEFINED__)
 #ifndef RTXBLOCKS_D3D12_MISC_TYPES
 #define RTXBLOCKS_D3D12_MISC_TYPES
 struct ID3D12MetaCommand;
@@ -386,3 +387,4 @@ struct __declspec(uuid("8754318e-d3a9-4541-98cf-645b50dc4874")) ID3D12GraphicsCo
     virtual void SetPipelineState1(ID3D12StateObject*) = 0;
     virtual void DispatchRays(const D3D12_DISPATCH_RAYS_DESC*) = 0;
 };
+#endif
