@@ -12,6 +12,7 @@ public:
 
     void Update(const Vector3& playerPos, ID3D11Device* device);
     void Render(ID3D11DeviceContext* context);
+    void RenderTransparent(ID3D11DeviceContext* context);
 
     Block GetBlock(int worldX, int worldY, int worldZ) const;
     void SetBlock(int worldX, int worldY, int worldZ, BlockType type);

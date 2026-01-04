@@ -49,9 +49,8 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
         mobs.push_back(std::move(cow));
     }
 
-    // Show window and capture mouse
+    // Show window
     window.Show();
-    window.SetMouseCapture(true);
 
     // Main loop
     auto lastTime = std::chrono::high_resolution_clock::now();

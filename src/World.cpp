@@ -94,6 +94,12 @@ void World::Render(ID3D11DeviceContext* context) {
     }
 }
 
+void World::RenderTransparent(ID3D11DeviceContext* context) {
+    for (auto& pair : m_chunks) {
+        pair.second->RenderTransparent(context);
+    }
+}
+
 Block World::GetBlock(int worldX, int worldY, int worldZ) const {
     if (worldY < 0 || worldY >= CHUNK_HEIGHT) {
         return Block(BlockType::Air);

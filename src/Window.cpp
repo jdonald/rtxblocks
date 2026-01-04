@@ -207,6 +207,12 @@ LRESULT Window::HandleMessage(UINT msg, WPARAM wParam, LPARAM lParam) {
             ShowCursor(TRUE);
         }
         return 0;
+
+    case WM_LBUTTONDOWN:
+        if (!m_mouseCaptured) {
+            SetMouseCapture(true);
+        }
+        return 0;
     }
 
     return DefWindowProc(m_hwnd, msg, wParam, lParam);

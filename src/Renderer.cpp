@@ -471,6 +471,15 @@ bool Renderer::CreateRasterizerStates() {
     dsDesc.StencilEnable = FALSE;
 
     hr = m_device->CreateDepthStencilState(&dsDesc, &m_depthDisabledState);
+    if (FAILED(hr)) return false;
+
+    // Create depth stencil state for transparent objects (read-only depth)
+    dsDesc.DepthEnable = TRUE;
+    dsDesc.DepthWriteMask = D3D11_DEPTH_WRITE_MASK_ZERO;
+    dsDesc.DepthFunc = D3D11_COMPARISON_LESS;
+    dsDesc.StencilEnable = FALSE;
+
+    hr = m_device->CreateDepthStencilState(&dsDesc, &m_depthReadOnlyState);
     return SUCCEEDED(hr);
 }
 
@@ -553,6 +562,17 @@ void Renderer::RenderWorld(World* world, Camera& camera) {
 
     // Render world
     world->Render(m_context.Get());
+
+    // --- Transparent Pass ---
+    float blendFactor[4] = { 0.0f, 0.0f, 0.0f, 0.0f };
+    m_context->OMSetBlendState(m_alphaBlendState.Get(), blendFactor, 0xFFFFFFFF);
+    m_context->OMSetDepthStencilState(m_depthReadOnlyState.Get(), 0);
+
+    world->RenderTransparent(m_context.Get());
+
+    // Reset states
+    m_context->OMSetBlendState(nullptr, blendFactor, 0xFFFFFFFF);
+    m_context->OMSetDepthStencilState(nullptr, 0);
 }
 
 void Renderer::RenderMob(Mob* mob, Camera& camera) {

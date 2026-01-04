@@ -113,6 +113,7 @@ private:
     ComPtr<ID3D11RasterizerState> m_wireframeRasterizer;
     ComPtr<ID3D11BlendState> m_alphaBlendState;
     ComPtr<ID3D11DepthStencilState> m_depthDisabledState;
+    ComPtr<ID3D11DepthStencilState> m_depthReadOnlyState;
 
     // UI rendering
     ComPtr<ID3D11Buffer> m_uiVertexBuffer;
