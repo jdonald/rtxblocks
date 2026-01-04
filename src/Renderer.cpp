@@ -799,8 +799,8 @@ void Renderer::RenderDebugHUD(const DebugInfo& debugInfo) {
     std::vector<uint32_t> indices;
 
     // Draw semi-transparent background
-    float bgWidth = 300.0f;
-    float bgHeight = 100.0f;
+    float bgWidth = 350.0f;
+    float bgHeight = (debugInfo.dxrStatus || debugInfo.dxrError) ? 140.0f : 100.0f;
     float bgX = 10.0f;
     float bgY = 10.0f;
 
@@ -848,6 +848,14 @@ void Renderer::RenderDebugHUD(const DebugInfo& debugInfo) {
         DrawText(blockText, 15.0f, 75.0f, 2.0f, Vector4(1.0f, 1.0f, 0.8f, 1.0f), vertices, indices);
     } else {
         DrawText("Looking at: Nothing", 15.0f, 75.0f, 2.0f, Vector4(0.7f, 0.7f, 0.7f, 1.0f), vertices, indices);
+    }
+
+    // Draw DXR status if available
+    if (debugInfo.dxrStatus) {
+        DrawText(debugInfo.dxrStatus, 15.0f, 95.0f, 2.0f, Vector4(0.5f, 0.8f, 1.0f, 1.0f), vertices, indices);
+    }
+    if (debugInfo.dxrError && debugInfo.dxrError[0] != '\0') {
+        DrawText(debugInfo.dxrError, 15.0f, 115.0f, 2.0f, Vector4(1.0f, 0.4f, 0.4f, 1.0f), vertices, indices);
     }
 
     if (vertices.empty()) return;

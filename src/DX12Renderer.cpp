@@ -120,6 +120,8 @@ DX12Renderer::DX12Renderer()
     , m_lastTlasBuilt(false)
     , m_lastRtVertexCount(0)
     , m_lastRtIndexCount(0)
+    , m_rtStatus("DXR: Not initialized")
+    , m_rtLastError("")
     , m_rasterVBSize(0)
     , m_rasterIBSize(0) {
 }
@@ -1115,18 +1117,38 @@ bool DX12Renderer::RenderRasterization(World* world, const Camera& camera, const
 }
 
 bool DX12Renderer::InitializeRaytracing() {
+    m_rtStatus = "Checking DXR support...";
     D3D12_FEATURE_DATA_D3D12_OPTIONS5 options5 = {};
     if (FAILED(m_device->CheckFeatureSupport(D3D12_FEATURE_D3D12_OPTIONS5, &options5, sizeof(options5)))) {
+        m_rtStatus = "DXR: CheckFeatureSupport failed";
         return false;
     }
     if (options5.RaytracingTier == D3D12_RAYTRACING_TIER_NOT_SUPPORTED) {
+        m_rtStatus = "DXR: Not supported by GPU";
         return false;
     }
 
-    if (!CreateRaytracingPipeline()) return false;
-    if (!CreateRaytracingResources()) return false;
-    if (!CreateRaytracingOutput()) return false;
-    if (!CreateShaderTable()) return false;
+    m_rtStatus = "Creating RT pipeline...";
+    if (!CreateRaytracingPipeline()) {
+        m_rtStatus = "DXR: Pipeline creation failed";
+        return false;
+    }
+    m_rtStatus = "Creating RT resources...";
+    if (!CreateRaytracingResources()) {
+        m_rtStatus = "DXR: Resources creation failed";
+        return false;
+    }
+    m_rtStatus = "Creating RT output...";
+    if (!CreateRaytracingOutput()) {
+        m_rtStatus = "DXR: Output creation failed";
+        return false;
+    }
+    m_rtStatus = "Creating shader table...";
+    if (!CreateShaderTable()) {
+        m_rtStatus = "DXR: Shader table failed";
+        return false;
+    }
+    m_rtStatus = "DXR: Ready";
     return true;
 }
 
@@ -1696,14 +1718,24 @@ void DX12Renderer::UpdateCameraCB(const Camera& camera) {
 }
 
 bool DX12Renderer::RenderRaytracing(World* world, const Camera& camera, UIInfo& uiInfo) {
-    if (!m_raytracingReady || !world) {
+    if (!m_raytracingReady) {
+        m_rtLastError = "RT not ready: " + m_rtStatus;
+        return false;
+    }
+    if (!world) {
+        m_rtLastError = "RT: World is null";
         return false;
     }
 
     std::vector<Vertex> vertices;
     std::vector<uint32_t> indices;
     world->GatherSolidMesh(vertices, indices);
-    if (vertices.empty() || indices.empty()) {
+    if (vertices.empty()) {
+        m_rtLastError = "RT: No vertices";
+        return false;
+    }
+    if (indices.empty()) {
+        m_rtLastError = "RT: No indices";
         return false;
     }
 
@@ -1714,10 +1746,19 @@ bool DX12Renderer::RenderRaytracing(World* world, const Camera& camera, UIInfo& 
     uiInfo.rtTriangleCount = static_cast<uint32_t>(indices.size() / 3);
     uiInfo.camPos = camera.GetEyePosition();
 
-    m_commandAllocator->Reset();
-    m_commandList->Reset(m_commandAllocator.Get(), nullptr);
+    HRESULT hr = m_commandAllocator->Reset();
+    if (FAILED(hr)) {
+        m_rtLastError = "RT: CmdAlloc Reset failed";
+        return false;
+    }
+    hr = m_commandList->Reset(m_commandAllocator.Get(), nullptr);
+    if (FAILED(hr)) {
+        m_rtLastError = "RT: CmdList Reset failed";
+        return false;
+    }
 
     if (!CreateRaytracingOutput()) {
+        m_rtLastError = "RT: CreateOutput failed";
         uiInfo.rtBlasBuilt = false;
         uiInfo.rtTlasBuilt = false;
         return false;
@@ -1727,8 +1768,10 @@ bool DX12Renderer::RenderRaytracing(World* world, const Camera& camera, UIInfo& 
     uiInfo.rtBlasBuilt = blasBuilt && m_blas;
     uiInfo.rtTlasBuilt = blasBuilt && m_tlas;
     if (!blasBuilt) {
+        m_rtLastError = "RT: AS build failed";
         return false;
     }
+    m_rtLastError = "";
 
     UpdateCameraCB(camera);
 

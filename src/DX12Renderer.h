@@ -55,6 +55,9 @@ public:
                              const class Player* player, const std::vector<class Mob*>& mobs);
 
     ID3D12Device* GetDevice() { return m_device.Get(); }
+    bool IsRaytracingReady() const { return m_raytracingReady; }
+    const std::string& GetRaytracingStatus() const { return m_rtStatus; }
+    const std::string& GetRaytracingLastError() const { return m_rtLastError; }
 
 private:
     bool CreateDevice(Window* window);
@@ -129,6 +132,8 @@ private:
     bool m_lastTlasBuilt;
     uint32_t m_lastRtVertexCount;
     uint32_t m_lastRtIndexCount;
+    std::string m_rtStatus;
+    std::string m_rtLastError;
 
     ComPtr<ID3D12RootSignature> m_rasterRootSig;
     ComPtr<ID3D12PipelineState> m_rasterPSO;

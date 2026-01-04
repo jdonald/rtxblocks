@@ -215,6 +215,12 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
                     debugInfo.hasLookedAtBlock = false;
                 }
 
+                // Add DXR status info if available
+                if (dx12Ready) {
+                    debugInfo.dxrStatus = dx12Renderer.GetRaytracingStatus().c_str();
+                    debugInfo.dxrError = dx12Renderer.GetRaytracingLastError().c_str();
+                }
+
                 renderer.RenderDebugHUD(debugInfo);
             }
 

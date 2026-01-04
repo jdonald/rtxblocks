@@ -23,6 +23,8 @@ struct DebugInfo {
     int loadedChunkCount;
     uint64_t solidIndexCount;
     uint64_t transparentIndexCount;
+    const char* dxrStatus = nullptr;
+    const char* dxrError = nullptr;
 };
 
 // UI vertex structure for 2D rendering
