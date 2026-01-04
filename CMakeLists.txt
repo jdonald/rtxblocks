@@ -21,6 +21,7 @@ set(SOURCES
     src/TerrainGenerator.cpp
     src/PerlinNoise.cpp
     src/BlockDatabase.cpp
+    src/SoundSystem.cpp
 )
 
 set(HEADERS
@@ -36,6 +37,7 @@ set(HEADERS
     src/PerlinNoise.h
     src/BlockDatabase.h
     src/MathUtils.h
+    src/SoundSystem.h
 )
 
 # Shader files

@@ -39,6 +39,7 @@ Chunk* World::GetOrCreateChunk(int chunkX, int chunkZ) {
     auto newChunk = std::make_unique<Chunk>(chunkX, chunkZ);
     m_terrainGenerator.GenerateChunk(newChunk.get());
     newChunk->GenerateMesh();
+    // Note: Buffer creation will happen in World::Update when device is available
 
     Chunk* chunkPtr = newChunk.get();
     m_chunks[std::make_pair(chunkX, chunkZ)] = std::move(newChunk);
@@ -58,10 +59,13 @@ void World::Update(const Vector3& playerPos, ID3D11Device* device) {
 
             Chunk* chunk = GetOrCreateChunk(chunkX, chunkZ);
 
+            // Always update buffer if needed (including first creation)
             if (chunk->NeedsMeshUpdate()) {
                 chunk->GenerateMesh();
-                chunk->UpdateBuffer(device);
             }
+
+            // Update GPU buffers (this checks internally if needed)
+            chunk->UpdateBuffer(device);
         }
     }
 

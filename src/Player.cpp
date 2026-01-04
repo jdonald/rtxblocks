@@ -1,6 +1,7 @@
 #include "Player.h"
 #include "Window.h"
 #include "World.h"
+#include "SoundSystem.h"
 #include <algorithm>
 
 const float PI = 3.14159265359f;
@@ -16,7 +17,9 @@ Player::Player()
     , m_mouseSensitivity(0.002f)
     , m_selectedSlot(0)
     , m_leftClickPressed(false)
-    , m_rightClickPressed(false) {
+    , m_rightClickPressed(false)
+    , m_wasOnGround(false)
+    , m_fallDistance(0.0f) {
 
     // Initialize inventory with available blocks
     m_inventory[0] = BlockType::Dirt;
@@ -30,10 +33,10 @@ Player::Player()
     m_inventory[8] = BlockType::Air;
 }
 
-void Player::Update(float deltaTime, Window* window, World* world) {
+void Player::Update(float deltaTime, Window* window, World* world, SoundSystem* soundSystem) {
     UpdateLook(deltaTime, window);
-    UpdateMovement(deltaTime, window, world);
-    UpdateBlockInteraction(window, world);
+    UpdateMovement(deltaTime, window, world, soundSystem);
+    UpdateBlockInteraction(window, world, soundSystem);
 
     // Update camera
     m_camera.SetPosition(m_position);
@@ -65,7 +68,7 @@ void Player::UpdateLook(float deltaTime, Window* window) {
     m_pitch = std::max(-maxPitch, std::min(maxPitch, m_pitch));
 }
 
-void Player::UpdateMovement(float deltaTime, Window* window, World* world) {
+void Player::UpdateMovement(float deltaTime, Window* window, World* world, SoundSystem* soundSystem) {
     Vector3 forward = m_camera.GetForward();
     Vector3 right = m_camera.GetRight();
     Vector3 up(0, 1, 0);
@@ -74,6 +77,7 @@ void Player::UpdateMovement(float deltaTime, Window* window, World* world) {
     Vector3 moveForward = Vector3(forward.x, 0, forward.z).normalized();
     Vector3 moveRight = Vector3(right.x, 0, right.z).normalized();
 
+    Vector3 oldPos = m_position;
     Vector3 moveDir(0, 0, 0);
 
     if (window->IsKeyDown('W')) {
@@ -103,9 +107,12 @@ void Player::UpdateMovement(float deltaTime, Window* window, World* world) {
         moveDir = moveDir / length;
         m_position = m_position + moveDir * m_flySpeed * deltaTime;
     }
+
+    // Landing sound (when player stops flying and touches ground)
+    // For creative mode, we'll just skip landing sounds since always flying
 }
 
-void Player::UpdateBlockInteraction(Window* window, World* world) {
+void Player::UpdateBlockInteraction(Window* window, World* world, SoundSystem* soundSystem) {
     bool leftClick = window->IsKeyDown(VK_LBUTTON);
     bool rightClick = window->IsKeyDown(VK_RBUTTON);
 
@@ -117,6 +124,14 @@ void Player::UpdateBlockInteraction(Window* window, World* world) {
     Block hitBlock;
 
     if (world->Raycast(rayOrigin, rayDir, 10.0f, hitPos, hitNormal, hitBlock)) {
+        // Play hit sound while holding left click
+        if (leftClick && soundSystem) {
+            if (!m_leftClickPressed) {
+                // First frame of clicking
+                soundSystem->PlaySound(SoundSystem::SOUND_BLOCK_HIT);
+            }
+        }
+
         // Left click - break block
         if (leftClick && !m_leftClickPressed) {
             world->SetBlock(
@@ -125,6 +140,9 @@ void Player::UpdateBlockInteraction(Window* window, World* world) {
                 static_cast<int>(hitPos.z),
                 BlockType::Air
             );
+            if (soundSystem) {
+                soundSystem->PlaySound(SoundSystem::SOUND_BLOCK_BREAK);
+            }
         }
 
         // Right click - place block
@@ -136,6 +154,9 @@ void Player::UpdateBlockInteraction(Window* window, World* world) {
                 static_cast<int>(placePos.z),
                 GetSelectedBlock()
             );
+            if (soundSystem) {
+                soundSystem->PlaySound(SoundSystem::SOUND_BLOCK_PLACE);
+            }
         }
     }
 

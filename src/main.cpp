@@ -4,6 +4,7 @@
 #include "Player.h"
 #include "Mob.h"
 #include "BlockDatabase.h"
+#include "SoundSystem.h"
 #include <windows.h>
 #include <chrono>
 #include <vector>
@@ -27,6 +28,10 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
         MessageBox(nullptr, "Failed to initialize renderer", "Error", MB_OK);
         return -1;
     }
+
+    // Create sound system
+    SoundSystem soundSystem;
+    soundSystem.Initialize();
 
     // Create world
     World world(12345);
@@ -87,7 +92,7 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
         }
 
         // Update player
-        player.Update(deltaTime, &window, &world);
+        player.Update(deltaTime, &window, &world, &soundSystem);
 
         // Update camera aspect ratio
         player.GetCamera().SetAspectRatio(

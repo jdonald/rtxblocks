@@ -34,7 +34,8 @@ public:
     void Render(ID3D11DeviceContext* context);
 
     bool NeedsMeshUpdate() const { return m_needsMeshUpdate; }
-    void MarkForMeshUpdate() { m_needsMeshUpdate = true; }
+    void MarkForMeshUpdate() { m_needsMeshUpdate = true; m_needsBufferUpdate = true; }
+    bool NeedsBufferUpdate() const { return m_needsBufferUpdate; }
 
     int GetChunkX() const { return m_chunkX; }
     int GetChunkZ() const { return m_chunkZ; }
@@ -58,6 +59,7 @@ private:
     ComPtr<ID3D11Buffer> m_indexBuffer;
 
     bool m_needsMeshUpdate;
+    bool m_needsBufferUpdate;
     bool m_isEmpty;
     uint32_t m_indexCount;
 };

@@ -6,12 +6,13 @@
 
 class Window;
 class World;
+class SoundSystem;
 
 class Player {
 public:
     Player();
 
-    void Update(float deltaTime, Window* window, World* world);
+    void Update(float deltaTime, Window* window, World* world, SoundSystem* soundSystem = nullptr);
 
     Vector3 GetPosition() const { return m_position; }
     void SetPosition(const Vector3& pos) { m_position = pos; }
@@ -23,9 +24,9 @@ public:
     int GetSelectedSlot() const { return m_selectedSlot; }
 
 private:
-    void UpdateMovement(float deltaTime, Window* window, World* world);
+    void UpdateMovement(float deltaTime, Window* window, World* world, SoundSystem* soundSystem);
     void UpdateLook(float deltaTime, Window* window);
-    void UpdateBlockInteraction(Window* window, World* world);
+    void UpdateBlockInteraction(Window* window, World* world, SoundSystem* soundSystem);
 
     Vector3 m_position;
     Vector3 m_velocity;
@@ -43,4 +44,8 @@ private:
 
     bool m_leftClickPressed;
     bool m_rightClickPressed;
+
+    // For landing sounds
+    bool m_wasOnGround;
+    float m_fallDistance;
 };

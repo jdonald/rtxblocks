@@ -28,15 +28,42 @@ bool Renderer::Initialize(Window* window) {
     m_width = window->GetWidth();
     m_height = window->GetHeight();
 
-    if (!CreateDeviceAndSwapChain(window)) return false;
-    if (!CreateRenderTargets()) return false;
-    if (!CreateDepthStencil(m_width, m_height)) return false;
-    if (!CreateShadowMap()) return false;
-    if (!CompileShaders()) return false;
-    if (!CreateConstantBuffers()) return false;
-    if (!CreateSamplerStates()) return false;
-    if (!CreateRasterizerStates()) return false;
-    if (!CreateUIResources()) return false;
+    if (!CreateDeviceAndSwapChain(window)) {
+        MessageBox(nullptr, "Failed to create D3D11 device and swap chain", "Error", MB_OK);
+        return false;
+    }
+    if (!CreateRenderTargets()) {
+        MessageBox(nullptr, "Failed to create render targets", "Error", MB_OK);
+        return false;
+    }
+    if (!CreateDepthStencil(m_width, m_height)) {
+        MessageBox(nullptr, "Failed to create depth stencil", "Error", MB_OK);
+        return false;
+    }
+    if (!CreateShadowMap()) {
+        MessageBox(nullptr, "Failed to create shadow map", "Error", MB_OK);
+        return false;
+    }
+    if (!CompileShaders()) {
+        MessageBox(nullptr, "Failed to compile shaders - check shader files in shaders/ directory", "Error", MB_OK);
+        return false;
+    }
+    if (!CreateConstantBuffers()) {
+        MessageBox(nullptr, "Failed to create constant buffers", "Error", MB_OK);
+        return false;
+    }
+    if (!CreateSamplerStates()) {
+        MessageBox(nullptr, "Failed to create sampler states", "Error", MB_OK);
+        return false;
+    }
+    if (!CreateRasterizerStates()) {
+        MessageBox(nullptr, "Failed to create rasterizer states", "Error", MB_OK);
+        return false;
+    }
+    if (!CreateUIResources()) {
+        MessageBox(nullptr, "Failed to create UI resources", "Error", MB_OK);
+        return false;
+    }
 
     // Set viewport
     D3D11_VIEWPORT viewport = {};
@@ -159,7 +186,15 @@ bool Renderer::CompileShaderFromFile(const std::string& filename, const std::str
                                      const std::string& profile, ID3DBlob** blob) {
     std::ifstream file(filename);
     if (!file.is_open()) {
-        return false;
+        // Try with "bin/" prefix
+        std::ifstream file2("bin/" + filename);
+        if (!file2.is_open()) {
+            char msg[512];
+            sprintf(msg, "Could not open shader file: %s", filename.c_str());
+            MessageBox(nullptr, msg, "Shader Error", MB_OK);
+            return false;
+        }
+        file = std::move(file2);
     }
 
     std::stringstream buffer;
@@ -183,6 +218,11 @@ bool Renderer::CompileShaderFromFile(const std::string& filename, const std::str
 
     if (FAILED(hr)) {
         if (errorBlob) {
+            char msg[1024];
+            sprintf(msg, "Shader compilation failed for %s:\n%s",
+                    filename.c_str(),
+                    static_cast<char*>(errorBlob->GetBufferPointer()));
+            MessageBox(nullptr, msg, "Shader Error", MB_OK);
             OutputDebugStringA(static_cast<char*>(errorBlob->GetBufferPointer()));
         }
         return false;

@@ -6,6 +6,7 @@ Chunk::Chunk(int chunkX, int chunkZ)
     : m_chunkX(chunkX)
     , m_chunkZ(chunkZ)
     , m_needsMeshUpdate(true)
+    , m_needsBufferUpdate(true)
     , m_isEmpty(true)
     , m_indexCount(0) {
     std::memset(m_blocks, 0, sizeof(m_blocks));
@@ -19,6 +20,7 @@ void Chunk::SetBlock(int x, int y, int z, BlockType type) {
 
     m_blocks[x][y][z] = Block(type);
     m_needsMeshUpdate = true;
+    m_needsBufferUpdate = true;
 
     if (type != BlockType::Air) {
         m_isEmpty = false;
@@ -134,13 +136,17 @@ void Chunk::GenerateMesh() {
     m_vertices.clear();
     m_indices.clear();
 
+    // Get chunk world position offset
+    Vector3 chunkOffset = GetWorldPosition();
+
     for (int x = 0; x < CHUNK_SIZE; x++) {
         for (int y = 0; y < CHUNK_HEIGHT; y++) {
             for (int z = 0; z < CHUNK_SIZE; z++) {
                 Block block = GetBlock(x, y, z);
                 if (block.IsAir()) continue;
 
-                Vector3 blockPos(x, y, z);
+                // Position in world coordinates (not just chunk-local)
+                Vector3 blockPos(chunkOffset.x + x, y, chunkOffset.z + z);
                 const BlockProperties& props = BlockDatabase::GetProperties(block.type);
 
                 for (int face = 0; face < 6; face++) {
@@ -153,11 +159,17 @@ void Chunk::GenerateMesh() {
     }
 
     m_needsMeshUpdate = false;
+    m_needsBufferUpdate = true; // Mesh changed, so buffer needs update
 }
 
 void Chunk::UpdateBuffer(ID3D11Device* device) {
+    if (!m_needsBufferUpdate) {
+        return; // Buffer is already up to date
+    }
+
     if (m_vertices.empty()) {
         m_indexCount = 0;
+        m_needsBufferUpdate = false;
         return;
     }
 
@@ -184,6 +196,7 @@ void Chunk::UpdateBuffer(ID3D11Device* device) {
     device->CreateBuffer(&ibDesc, &ibData, m_indexBuffer.ReleaseAndGetAddressOf());
 
     m_indexCount = static_cast<uint32_t>(m_indices.size());
+    m_needsBufferUpdate = false; // Buffer is now up to date
 }
 
 void Chunk::Render(ID3D11DeviceContext* context) {
