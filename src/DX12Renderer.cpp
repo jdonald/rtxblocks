@@ -116,6 +116,10 @@ DX12Renderer::DX12Renderer()
     , m_vertexBufferState(D3D12_RESOURCE_STATE_COPY_DEST)
     , m_indexBufferState(D3D12_RESOURCE_STATE_COPY_DEST)
     , m_outputInCopySource(false)
+    , m_lastBlasBuilt(false)
+    , m_lastTlasBuilt(false)
+    , m_lastRtVertexCount(0)
+    , m_lastRtIndexCount(0)
     , m_rasterVBSize(0)
     , m_rasterIBSize(0) {
 }
@@ -770,8 +774,8 @@ void DX12Renderer::RenderUIInternal(const UIInfo& uiInfo) {
 
     if (uiInfo.showDebug) {
         Vector4 bgColor(0.0f, 0.0f, 0.0f, 0.5f);
-        float bgWidth = 300.0f;
-        float bgHeight = 100.0f;
+        float bgWidth = 350.0f;
+        float bgHeight = uiInfo.isRaytracing ? 200.0f : 100.0f;
         float bgX = 10.0f;
         float bgY = 10.0f;
 
@@ -804,6 +808,24 @@ void DX12Renderer::RenderUIInternal(const UIInfo& uiInfo) {
             DrawTextInternal(blockText, 15.0f, 55.0f, 2.0f, Vector4(1, 1, 0.8f, 1), vertices, indices);
         } else {
             DrawTextInternal("Looking at: Nothing", 15.0f, 55.0f, 2.0f, Vector4(0.7f, 0.7f, 0.7f, 1), vertices, indices);
+        }
+
+        if (uiInfo.isRaytracing) {
+            char camText[128];
+            sprintf(camText, "Cam: (%.1f, %.1f, %.1f)", uiInfo.camPos.x, uiInfo.camPos.y, uiInfo.camPos.z);
+            DrawTextInternal(camText, 15.0f, 95.0f, 2.0f, Vector4(0.8f, 1.0f, 0.8f, 1), vertices, indices);
+
+            char rtText[128];
+            sprintf(rtText, "RT Verts: %u  Tris: %u", uiInfo.rtVertexCount, uiInfo.rtTriangleCount);
+            DrawTextInternal(rtText, 15.0f, 135.0f, 2.0f, Vector4(0.8f, 0.8f, 1.0f, 1), vertices, indices);
+
+            char asText[128];
+            sprintf(asText, "BLAS: %s  TLAS: %s",
+                    uiInfo.rtBlasBuilt ? "OK" : "FAIL",
+                    uiInfo.rtTlasBuilt ? "OK" : "FAIL");
+            Vector4 asColor = (uiInfo.rtBlasBuilt && uiInfo.rtTlasBuilt) ?
+                              Vector4(0.0f, 1.0f, 0.0f, 1.0f) : Vector4(1.0f, 0.0f, 0.0f, 1.0f);
+            DrawTextInternal(asText, 15.0f, 175.0f, 2.0f, asColor, vertices, indices);
         }
     }
 
@@ -1643,7 +1665,7 @@ bool DX12Renderer::CreateShaderTable() {
 
 void DX12Renderer::UpdateCameraCB(const Camera& camera) {
     CameraCB cb = {};
-    Vector3 origin = camera.GetPosition();
+    Vector3 origin = camera.GetEyePosition();
     Vector3 forward = camera.GetForward();
     Vector3 right = camera.GetRight();
     Vector3 up = camera.GetUp();
@@ -1673,7 +1695,7 @@ void DX12Renderer::UpdateCameraCB(const Camera& camera) {
     m_cameraCB->Unmap(0, nullptr);
 }
 
-bool DX12Renderer::RenderRaytracing(World* world, const Camera& camera, const UIInfo& uiInfo) {
+bool DX12Renderer::RenderRaytracing(World* world, const Camera& camera, UIInfo& uiInfo) {
     if (!m_raytracingReady || !world) {
         return false;
     }
@@ -1685,14 +1707,26 @@ bool DX12Renderer::RenderRaytracing(World* world, const Camera& camera, const UI
         return false;
     }
 
+    // Populate raytracing debug info
+    uiInfo.isRaytracing = true;
+    uiInfo.rtVertexCount = static_cast<uint32_t>(vertices.size());
+    uiInfo.rtIndexCount = static_cast<uint32_t>(indices.size());
+    uiInfo.rtTriangleCount = static_cast<uint32_t>(indices.size() / 3);
+    uiInfo.camPos = camera.GetEyePosition();
+
     m_commandAllocator->Reset();
     m_commandList->Reset(m_commandAllocator.Get(), nullptr);
 
     if (!CreateRaytracingOutput()) {
+        uiInfo.rtBlasBuilt = false;
+        uiInfo.rtTlasBuilt = false;
         return false;
     }
 
-    if (!BuildAccelerationStructures(vertices, indices)) {
+    bool blasBuilt = BuildAccelerationStructures(vertices, indices);
+    uiInfo.rtBlasBuilt = blasBuilt && m_blas;
+    uiInfo.rtTlasBuilt = blasBuilt && m_tlas;
+    if (!blasBuilt) {
         return false;
     }
 

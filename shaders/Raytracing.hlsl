@@ -1,7 +1,8 @@
 struct Vertex {
     float3 position;
     float3 normal;
-    float4 color;
+    float3 colorRGB;
+    float colorA;
     float2 texCoord;
 };
 
@@ -46,7 +47,7 @@ void RayGen() {
     ray.TMax = 1000.0f;
 
     RayPayload payload;
-    payload.color = float3(0.5f, 0.7f, 1.0f);
+    payload.color = float3(0.0f, 0.0f, 0.0f);
 
     TraceRay(Scene, RAY_FLAG_NONE, 0xFF, 0, 1, 0, ray, payload);
     Output[index] = float4(payload.color, 1.0f);
@@ -54,7 +55,8 @@ void RayGen() {
 
 [shader("miss")]
 void Miss(inout RayPayload payload) {
-    payload.color = float3(0.5f, 0.7f, 1.0f);
+    // Red sky to indicate miss (debug)
+    payload.color = float3(0.4f, 0.6f, 0.9f);
 }
 
 struct Attributes {
@@ -64,9 +66,12 @@ struct Attributes {
 [shader("closesthit")]
 void ClosestHit(inout RayPayload payload, in Attributes attr) {
     uint primIndex = PrimitiveIndex();
-    uint i0 = Indices.Load(primIndex * 12 + 0);
-    uint i1 = Indices.Load(primIndex * 12 + 4);
-    uint i2 = Indices.Load(primIndex * 12 + 8);
+    // Indices are 32-bit (4 bytes). Triangle is 3 indices (12 bytes).
+    // ByteAddressBuffer loads 4 bytes at a time.
+    uint address = primIndex * 12;
+    uint i0 = Indices.Load(address + 0);
+    uint i1 = Indices.Load(address + 4);
+    uint i2 = Indices.Load(address + 8);
 
     Vertex v0 = Vertices[i0];
     Vertex v1 = Vertices[i1];
@@ -78,8 +83,16 @@ void ClosestHit(inout RayPayload payload, in Attributes attr) {
     bary.x = 1.0f - bary.y - bary.z;
 
     float3 normal = normalize(v0.normal * bary.x + v1.normal * bary.y + v2.normal * bary.z);
-    float3 baseColor = v0.color.rgb * bary.x + v1.color.rgb * bary.y + v2.color.rgb * bary.z;
+    
+    // Reconstruct colors
+    float4 c0 = float4(v0.colorRGB, v0.colorA);
+    float4 c1 = float4(v1.colorRGB, v1.colorA);
+    float4 c2 = float4(v2.colorRGB, v2.colorA);
+    
+    float3 baseColor = c0.rgb * bary.x + c1.rgb * bary.y + c2.rgb * bary.z;
     float3 lightDir = normalize(float3(0.5f, 1.0f, 0.3f));
     float diff = max(dot(normal, lightDir), 0.0f);
-    payload.color = baseColor * (0.25f + 0.75f * diff);
+    
+    // Ambient + Diffuse
+    payload.color = baseColor * (0.3f + 0.7f * diff);
 }

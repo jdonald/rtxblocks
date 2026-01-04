@@ -16,6 +16,7 @@ public:
     void SetAspectRatio(float aspect);
 
     Vector3 GetPosition() const { return m_position; }
+    Vector3 GetEyePosition() const;
     Vector3 GetForward() const;
     Vector3 GetRight() const;
     Vector3 GetUp() const;

@@ -2,6 +2,14 @@
 #include <windows.h>
 #include <d3d12.h>
 
+// Ensure C89 anonymous union macros are defined for compatibility
+#ifndef __C89_NAMELESS
+#define __C89_NAMELESS
+#endif
+#ifndef __C89_NAMELESSUNIONNAME
+#define __C89_NAMELESSUNIONNAME
+#endif
+
 // Use the native DX12 SRV description when DXR is available in system headers.
 #if defined(__ID3D12Device5_INTERFACE_DEFINED__) && !defined(D3D12_SHADER_RESOURCE_VIEW_DESC_RTX)
 typedef D3D12_SHADER_RESOURCE_VIEW_DESC D3D12_SHADER_RESOURCE_VIEW_DESC_RTX;
@@ -123,17 +131,17 @@ typedef enum D3D12_RAYTRACING_GEOMETRY_TYPE {
 #ifndef D3D12_RAYTRACING_GEOMETRY_DESC
 typedef struct D3D12_GPU_VIRTUAL_ADDRESS_AND_STRIDE {
     D3D12_GPU_VIRTUAL_ADDRESS StartAddress;
-    UINT StrideInBytes;
+    UINT64 StrideInBytes;
 } D3D12_GPU_VIRTUAL_ADDRESS_AND_STRIDE;
 
 typedef struct D3D12_RAYTRACING_GEOMETRY_TRIANGLES_DESC {
-    D3D12_GPU_VIRTUAL_ADDRESS_AND_STRIDE VertexBuffer;
+    D3D12_GPU_VIRTUAL_ADDRESS Transform3x4;
+    DXGI_FORMAT IndexFormat;
     DXGI_FORMAT VertexFormat;
+    UINT IndexCount;
     UINT VertexCount;
     D3D12_GPU_VIRTUAL_ADDRESS IndexBuffer;
-    UINT IndexCount;
-    DXGI_FORMAT IndexFormat;
-    D3D12_GPU_VIRTUAL_ADDRESS Transform3x4;
+    D3D12_GPU_VIRTUAL_ADDRESS_AND_STRIDE VertexBuffer;
 } D3D12_RAYTRACING_GEOMETRY_TRIANGLES_DESC;
 
 typedef struct D3D12_RAYTRACING_GEOMETRY_DESC {

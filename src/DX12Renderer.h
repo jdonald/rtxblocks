@@ -27,6 +27,16 @@ public:
         bool hasLookedAtBlock = false;
         const char* lookedAtBlockName = nullptr;
         int selectedSlot = 0;
+        Vector3 camPos;
+        Vector3 camDir;
+        const char* renderMode = nullptr;
+        // Raytracing debug info
+        bool isRaytracing = false;
+        uint32_t rtVertexCount = 0;
+        uint32_t rtIndexCount = 0;
+        uint32_t rtTriangleCount = 0;
+        bool rtBlasBuilt = false;
+        bool rtTlasBuilt = false;
     };
 
     DX12Renderer();
@@ -40,7 +50,7 @@ public:
     void EndFrame();
     bool InitializeRaytracing();
     bool InitializeRasterization();
-    bool RenderRaytracing(class World* world, const class Camera& camera, const UIInfo& uiInfo);
+    bool RenderRaytracing(class World* world, const class Camera& camera, UIInfo& uiInfo);
     bool RenderRasterization(class World* world, const class Camera& camera, const UIInfo& uiInfo,
                              const class Player* player, const std::vector<class Mob*>& mobs);
 
@@ -115,6 +125,10 @@ private:
     D3D12_RESOURCE_STATES m_vertexBufferState;
     D3D12_RESOURCE_STATES m_indexBufferState;
     bool m_outputInCopySource;
+    bool m_lastBlasBuilt;
+    bool m_lastTlasBuilt;
+    uint32_t m_lastRtVertexCount;
+    uint32_t m_lastRtIndexCount;
 
     ComPtr<ID3D12RootSignature> m_rasterRootSig;
     ComPtr<ID3D12PipelineState> m_rasterPSO;
