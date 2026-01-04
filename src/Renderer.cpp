@@ -524,7 +524,11 @@ void Renderer::UpdateConstantBuffer(const Matrix4x4& world, const Matrix4x4& vie
     Vector3 lightTarget(0, 60, 0);
     Matrix4x4 lightView = Matrix4x4::LookAtLH(lightPos, lightTarget, Vector3(0, 1, 0));
     Matrix4x4 lightProj = Matrix4x4::PerspectiveFovLH(1.57f, 1.0f, 1.0f, 500.0f);
-    cb.lightViewProj = (lightView * lightProj).Transpose();
+    // Matrices are built in column-vector form and transposed for the row-vector HLSL path.
+    // To apply View then Projection in HLSL as mul(pos, LightViewProj), we need (Proj * View)^T here.
+    cb.lightViewProj = (lightProj * lightView).Transpose();
+
+    cb.cameraPos = Vector4(0, 0, 0, 1);
 
     D3D11_MAPPED_SUBRESOURCE mapped;
     m_context->Map(m_constantBuffer.Get(), 0, D3D11_MAP_WRITE_DISCARD, 0, &mapped);
