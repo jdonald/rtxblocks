@@ -41,6 +41,9 @@ public:
     int GetChunkX() const { return m_chunkX; }
     int GetChunkZ() const { return m_chunkZ; }
 
+    uint32_t GetSolidIndexCount() const { return m_indexCount; }
+    uint32_t GetTransparentIndexCount() const { return m_transparentIndexCount; }
+
     Vector3 GetWorldPosition() const {
         return Vector3(m_chunkX * CHUNK_SIZE, 0, m_chunkZ * CHUNK_SIZE);
     }

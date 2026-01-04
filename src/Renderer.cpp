@@ -433,7 +433,8 @@ bool Renderer::CreateRasterizerStates() {
     D3D11_RASTERIZER_DESC rastDesc = {};
     rastDesc.FillMode = D3D11_FILL_SOLID;
     rastDesc.CullMode = D3D11_CULL_BACK;
-    rastDesc.FrontCounterClockwise = FALSE;
+    // Chunk and mob meshes are authored with CCW winding.
+    rastDesc.FrontCounterClockwise = TRUE;
     rastDesc.DepthBias = 0;
     rastDesc.DepthBiasClamp = 0.0f;
     rastDesc.SlopeScaledDepthBias = 0.0f;
@@ -447,6 +448,14 @@ bool Renderer::CreateRasterizerStates() {
 
     rastDesc.FillMode = D3D11_FILL_WIREFRAME;
     hr = m_device->CreateRasterizerState(&rastDesc, &m_wireframeRasterizer);
+    if (FAILED(hr)) return false;
+
+    // UI should not depend on the 3D pass' winding/culling state.
+    D3D11_RASTERIZER_DESC uiRastDesc = rastDesc;
+    uiRastDesc.FillMode = D3D11_FILL_SOLID;
+    uiRastDesc.CullMode = D3D11_CULL_NONE;
+    uiRastDesc.FrontCounterClockwise = FALSE;
+    hr = m_device->CreateRasterizerState(&uiRastDesc, &m_uiRasterizer);
     if (FAILED(hr)) return false;
 
     // Create alpha blend state for UI
@@ -657,6 +666,7 @@ void Renderer::RenderUI(Player* player) {
     m_context->VSSetShader(m_uiVS.Get(), nullptr, 0);
     m_context->PSSetShader(m_uiPS.Get(), nullptr, 0);
     m_context->IASetInputLayout(m_uiInputLayout.Get());
+    m_context->RSSetState(m_uiRasterizer.Get());
 
     // Enable alpha blending and disable depth for UI
     float blendFactor[4] = { 0.0f, 0.0f, 0.0f, 0.0f };
@@ -737,7 +747,7 @@ void Renderer::RenderDebugHUD(const DebugInfo& debugInfo) {
 
     // Draw semi-transparent background
     float bgWidth = 300.0f;
-    float bgHeight = 60.0f;
+    float bgHeight = 100.0f;
     float bgX = 10.0f;
     float bgY = 10.0f;
 
@@ -766,14 +776,25 @@ void Renderer::RenderDebugHUD(const DebugInfo& debugInfo) {
     sprintf(fpsText, "FPS: %.1f", debugInfo.fps);
     DrawText(fpsText, 15.0f, 15.0f, 2.0f, Vector4(1.0f, 1.0f, 1.0f, 1.0f), vertices, indices);
 
+    // Draw world stats
+    char chunkText[64];
+    sprintf(chunkText, "Chunks: %d", debugInfo.loadedChunkCount);
+    DrawText(chunkText, 15.0f, 35.0f, 2.0f, Vector4(0.9f, 0.9f, 0.9f, 1.0f), vertices, indices);
+
+    char indexText[128];
+    sprintf(indexText, "Idx: %llu / %llu",
+            static_cast<unsigned long long>(debugInfo.solidIndexCount),
+            static_cast<unsigned long long>(debugInfo.transparentIndexCount));
+    DrawText(indexText, 15.0f, 55.0f, 2.0f, Vector4(0.9f, 0.9f, 0.9f, 1.0f), vertices, indices);
+
     // Draw looked-at block info
     if (debugInfo.hasLookedAtBlock) {
         const char* blockName = BlockDatabase::GetProperties(debugInfo.lookedAtBlockType).name;
         char blockText[128];
         sprintf(blockText, "Looking at: %s", blockName);
-        DrawText(blockText, 15.0f, 35.0f, 2.0f, Vector4(1.0f, 1.0f, 0.8f, 1.0f), vertices, indices);
+        DrawText(blockText, 15.0f, 75.0f, 2.0f, Vector4(1.0f, 1.0f, 0.8f, 1.0f), vertices, indices);
     } else {
-        DrawText("Looking at: Nothing", 15.0f, 35.0f, 2.0f, Vector4(0.7f, 0.7f, 0.7f, 1.0f), vertices, indices);
+        DrawText("Looking at: Nothing", 15.0f, 75.0f, 2.0f, Vector4(0.7f, 0.7f, 0.7f, 1.0f), vertices, indices);
     }
 
     if (vertices.empty()) return;
@@ -807,6 +828,7 @@ void Renderer::RenderDebugHUD(const DebugInfo& debugInfo) {
     m_context->VSSetShader(m_uiVS.Get(), nullptr, 0);
     m_context->PSSetShader(m_uiPS.Get(), nullptr, 0);
     m_context->IASetInputLayout(m_uiInputLayout.Get());
+    m_context->RSSetState(m_uiRasterizer.Get());
 
     // Enable alpha blending and disable depth for UI
     float blendFactor[4] = { 0.0f, 0.0f, 0.0f, 0.0f };

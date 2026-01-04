@@ -4,11 +4,18 @@
 #include "MathUtils.h"
 #include <map>
 #include <memory>
+#include <cstdint>
 
 class World {
 public:
     World(unsigned int seed = 12345);
     ~World();
+
+    struct DebugStats {
+        int chunkCount = 0;
+        uint64_t solidIndexCount = 0;
+        uint64_t transparentIndexCount = 0;
+    };
 
     void Update(const Vector3& playerPos, ID3D11Device* device);
     void Render(ID3D11DeviceContext* context);
@@ -17,6 +24,7 @@ public:
     Block GetBlock(int worldX, int worldY, int worldZ) const;
     void SetBlock(int worldX, int worldY, int worldZ, BlockType type);
     int GetTerrainHeight(int worldX, int worldZ) const;
+    DebugStats GetDebugStats() const;
 
     bool Raycast(const Vector3& origin, const Vector3& direction, float maxDistance,
                  Vector3& hitPos, Vector3& hitNormal, Block& hitBlock);

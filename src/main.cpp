@@ -56,6 +56,8 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
 
     // Show window
     window.Show();
+    bool mouseCaptured = true;
+    window.SetMouseCapture(mouseCaptured);
 
     // Main loop
     auto lastTime = std::chrono::high_resolution_clock::now();
@@ -92,7 +94,6 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
 
         // Toggle mouse capture with ESC
         if (window.WasKeyPressed(VK_ESCAPE)) {
-            static bool mouseCaptured = true;
             mouseCaptured = !mouseCaptured;
             window.SetMouseCapture(mouseCaptured);
         }
@@ -151,6 +152,11 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
         if (renderer.IsDebugHUDVisible()) {
             DebugInfo debugInfo;
             debugInfo.fps = currentFPS;
+
+            World::DebugStats worldStats = world.GetDebugStats();
+            debugInfo.loadedChunkCount = worldStats.chunkCount;
+            debugInfo.solidIndexCount = worldStats.solidIndexCount;
+            debugInfo.transparentIndexCount = worldStats.transparentIndexCount;
 
             // Raycast to find looked-at block
             Vector3 hitPos, hitNormal;

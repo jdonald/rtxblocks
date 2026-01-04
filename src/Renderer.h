@@ -4,6 +4,7 @@
 #include "Block.h"
 #include <d3d11.h>
 #include <wrl/client.h>
+#include <cstdint>
 #include <string>
 #include <vector>
 
@@ -19,6 +20,9 @@ struct DebugInfo {
     bool hasLookedAtBlock;
     BlockType lookedAtBlockType;
     Vector3 lookedAtBlockPos;
+    int loadedChunkCount;
+    uint64_t solidIndexCount;
+    uint64_t transparentIndexCount;
 };
 
 // UI vertex structure for 2D rendering
@@ -111,6 +115,7 @@ private:
 
     ComPtr<ID3D11RasterizerState> m_solidRasterizer;
     ComPtr<ID3D11RasterizerState> m_wireframeRasterizer;
+    ComPtr<ID3D11RasterizerState> m_uiRasterizer;
     ComPtr<ID3D11BlendState> m_alphaBlendState;
     ComPtr<ID3D11DepthStencilState> m_depthDisabledState;
     ComPtr<ID3D11DepthStencilState> m_depthReadOnlyState;

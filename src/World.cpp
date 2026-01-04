@@ -134,6 +134,19 @@ int World::GetTerrainHeight(int worldX, int worldZ) const {
     return m_terrainGenerator.GetTerrainHeight(worldX, worldZ);
 }
 
+World::DebugStats World::GetDebugStats() const {
+    DebugStats stats;
+    stats.chunkCount = static_cast<int>(m_chunks.size());
+
+    for (const auto& pair : m_chunks) {
+        const Chunk* chunk = pair.second.get();
+        stats.solidIndexCount += static_cast<uint64_t>(chunk->GetSolidIndexCount());
+        stats.transparentIndexCount += static_cast<uint64_t>(chunk->GetTransparentIndexCount());
+    }
+
+    return stats;
+}
+
 bool World::Raycast(const Vector3& origin, const Vector3& direction, float maxDistance,
                     Vector3& hitPos, Vector3& hitNormal, Block& hitBlock) {
     Vector3 pos = origin;
