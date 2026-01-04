@@ -109,6 +109,12 @@ DX12Renderer::DX12Renderer()
     , m_rasterReady(false)
     , m_vertexBufferSize(0)
     , m_indexBufferSize(0)
+    , m_vertexUploadSize(0)
+    , m_indexUploadSize(0)
+    , m_blasScratchSize(0)
+    , m_tlasScratchSize(0)
+    , m_vertexBufferState(D3D12_RESOURCE_STATE_COPY_DEST)
+    , m_indexBufferState(D3D12_RESOURCE_STATE_COPY_DEST)
     , m_outputInCopySource(false)
     , m_rasterVBSize(0)
     , m_rasterIBSize(0) {
@@ -1323,6 +1329,8 @@ bool DX12Renderer::BuildAccelerationStructures(const std::vector<Vertex>& vertic
         vertexBufferSize != m_vertexBufferSize || indexBufferSize != m_indexBufferSize) {
         m_vertexBufferSize = vertexBufferSize;
         m_indexBufferSize = indexBufferSize;
+        m_vertexBufferState = D3D12_RESOURCE_STATE_COPY_DEST;
+        m_indexBufferState = D3D12_RESOURCE_STATE_COPY_DEST;
 
         D3D12_HEAP_PROPERTIES defaultHeap = {};
         defaultHeap.Type = D3D12_HEAP_TYPE_DEFAULT;
@@ -1351,44 +1359,75 @@ bool DX12Renderer::BuildAccelerationStructures(const std::vector<Vertex>& vertic
         }
     }
 
-    D3D12_HEAP_PROPERTIES uploadHeap2 = {};
-    uploadHeap2.Type = D3D12_HEAP_TYPE_UPLOAD;
+    D3D12_HEAP_PROPERTIES uploadHeap = {};
+    uploadHeap.Type = D3D12_HEAP_TYPE_UPLOAD;
 
-    D3D12_RESOURCE_DESC uploadDesc = {};
-    uploadDesc.Dimension = D3D12_RESOURCE_DIMENSION_BUFFER;
-    uploadDesc.Width = vertexBufferSize;
-    uploadDesc.Height = 1;
-    uploadDesc.DepthOrArraySize = 1;
-    uploadDesc.MipLevels = 1;
-    uploadDesc.SampleDesc.Count = 1;
-    uploadDesc.Layout = D3D12_TEXTURE_LAYOUT_ROW_MAJOR;
+    if (!m_vertexUpload || m_vertexUploadSize < vertexBufferSize) {
+        m_vertexUploadSize = vertexBufferSize;
+        D3D12_RESOURCE_DESC uploadDesc = {};
+        uploadDesc.Dimension = D3D12_RESOURCE_DIMENSION_BUFFER;
+        uploadDesc.Width = m_vertexUploadSize;
+        uploadDesc.Height = 1;
+        uploadDesc.DepthOrArraySize = 1;
+        uploadDesc.MipLevels = 1;
+        uploadDesc.SampleDesc.Count = 1;
+        uploadDesc.Layout = D3D12_TEXTURE_LAYOUT_ROW_MAJOR;
+        if (FAILED(m_device->CreateCommittedResource(&uploadHeap, D3D12_HEAP_FLAG_NONE, &uploadDesc,
+                                                     D3D12_RESOURCE_STATE_GENERIC_READ, nullptr,
+                                                     IID_PPV_ARGS(m_vertexUpload.ReleaseAndGetAddressOf())))) {
+            return false;
+        }
+    }
 
-    ComPtr<ID3D12Resource> vbUpload;
-    if (FAILED(m_device->CreateCommittedResource(&uploadHeap2, D3D12_HEAP_FLAG_NONE, &uploadDesc,
-                                                 D3D12_RESOURCE_STATE_GENERIC_READ, nullptr,
-                                                 IID_PPV_ARGS(vbUpload.GetAddressOf())))) {
-        return false;
+    if (!m_indexUpload || m_indexUploadSize < indexBufferSize) {
+        m_indexUploadSize = indexBufferSize;
+        D3D12_RESOURCE_DESC uploadDesc = {};
+        uploadDesc.Dimension = D3D12_RESOURCE_DIMENSION_BUFFER;
+        uploadDesc.Width = m_indexUploadSize;
+        uploadDesc.Height = 1;
+        uploadDesc.DepthOrArraySize = 1;
+        uploadDesc.MipLevels = 1;
+        uploadDesc.SampleDesc.Count = 1;
+        uploadDesc.Layout = D3D12_TEXTURE_LAYOUT_ROW_MAJOR;
+        if (FAILED(m_device->CreateCommittedResource(&uploadHeap, D3D12_HEAP_FLAG_NONE, &uploadDesc,
+                                                     D3D12_RESOURCE_STATE_GENERIC_READ, nullptr,
+                                                     IID_PPV_ARGS(m_indexUpload.ReleaseAndGetAddressOf())))) {
+            return false;
+        }
     }
 
     void* mapped = nullptr;
-    vbUpload->Map(0, nullptr, &mapped);
-    memcpy(mapped, vertices.data(), vertices.size() * sizeof(Vertex));
-    vbUpload->Unmap(0, nullptr);
+    m_vertexUpload->Map(0, nullptr, &mapped);
+    memcpy(mapped, vertices.data(), vertexBufferSize);
+    m_vertexUpload->Unmap(0, nullptr);
 
-    uploadDesc.Width = indexBufferSize;
-    ComPtr<ID3D12Resource> ibUpload;
-    if (FAILED(m_device->CreateCommittedResource(&uploadHeap2, D3D12_HEAP_FLAG_NONE, &uploadDesc,
-                                                 D3D12_RESOURCE_STATE_GENERIC_READ, nullptr,
-                                                 IID_PPV_ARGS(ibUpload.GetAddressOf())))) {
-        return false;
+    m_indexUpload->Map(0, nullptr, &mapped);
+    memcpy(mapped, indices.data(), indexBufferSize);
+    m_indexUpload->Unmap(0, nullptr);
+
+    if (m_vertexBufferState != D3D12_RESOURCE_STATE_COPY_DEST) {
+        D3D12_RESOURCE_BARRIER barrier = {};
+        barrier.Type = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION;
+        barrier.Transition.pResource = m_vertexBuffer.Get();
+        barrier.Transition.StateBefore = m_vertexBufferState;
+        barrier.Transition.StateAfter = D3D12_RESOURCE_STATE_COPY_DEST;
+        barrier.Transition.Subresource = D3D12_RESOURCE_BARRIER_ALL_SUBRESOURCES;
+        m_commandList->ResourceBarrier(1, &barrier);
+        m_vertexBufferState = D3D12_RESOURCE_STATE_COPY_DEST;
+    }
+    if (m_indexBufferState != D3D12_RESOURCE_STATE_COPY_DEST) {
+        D3D12_RESOURCE_BARRIER barrier = {};
+        barrier.Type = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION;
+        barrier.Transition.pResource = m_indexBuffer.Get();
+        barrier.Transition.StateBefore = m_indexBufferState;
+        barrier.Transition.StateAfter = D3D12_RESOURCE_STATE_COPY_DEST;
+        barrier.Transition.Subresource = D3D12_RESOURCE_BARRIER_ALL_SUBRESOURCES;
+        m_commandList->ResourceBarrier(1, &barrier);
+        m_indexBufferState = D3D12_RESOURCE_STATE_COPY_DEST;
     }
 
-    ibUpload->Map(0, nullptr, &mapped);
-    memcpy(mapped, indices.data(), indices.size() * sizeof(uint32_t));
-    ibUpload->Unmap(0, nullptr);
-
-    m_commandList->CopyBufferRegion(m_vertexBuffer.Get(), 0, vbUpload.Get(), 0, vertexBufferSize);
-    m_commandList->CopyBufferRegion(m_indexBuffer.Get(), 0, ibUpload.Get(), 0, indexBufferSize);
+    m_commandList->CopyBufferRegion(m_vertexBuffer.Get(), 0, m_vertexUpload.Get(), 0, vertexBufferSize);
+    m_commandList->CopyBufferRegion(m_indexBuffer.Get(), 0, m_indexUpload.Get(), 0, indexBufferSize);
 
     D3D12_RESOURCE_BARRIER barriers[2] = {};
     barriers[0].Type = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION;
@@ -1399,6 +1438,8 @@ bool DX12Renderer::BuildAccelerationStructures(const std::vector<Vertex>& vertic
     barriers[1] = barriers[0];
     barriers[1].Transition.pResource = m_indexBuffer.Get();
     m_commandList->ResourceBarrier(2, barriers);
+    m_vertexBufferState = D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE;
+    m_indexBufferState = D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE;
 
     D3D12_RAYTRACING_GEOMETRY_DESC geomDesc = {};
     geomDesc.Type = D3D12_RAYTRACING_GEOMETRY_TYPE_TRIANGLES;
@@ -1446,16 +1487,19 @@ bool DX12Renderer::BuildAccelerationStructures(const std::vector<Vertex>& vertic
 
     D3D12_RESOURCE_DESC scratchDesc = blasDesc;
     scratchDesc.Width = blasInfo.ScratchDataSizeInBytes;
-    ComPtr<ID3D12Resource> scratch;
-    if (FAILED(m_device->CreateCommittedResource(&defaultHeap, D3D12_HEAP_FLAG_NONE, &scratchDesc,
-                                                 D3D12_RESOURCE_STATE_UNORDERED_ACCESS, nullptr,
-                                                 IID_PPV_ARGS(scratch.GetAddressOf())))) {
-        return false;
+    if (!m_blasScratch || m_blasScratchSize < scratchDesc.Width) {
+        m_blasScratchSize = scratchDesc.Width;
+        scratchDesc.Width = m_blasScratchSize;
+        if (FAILED(m_device->CreateCommittedResource(&defaultHeap, D3D12_HEAP_FLAG_NONE, &scratchDesc,
+                                                     D3D12_RESOURCE_STATE_UNORDERED_ACCESS, nullptr,
+                                                     IID_PPV_ARGS(m_blasScratch.ReleaseAndGetAddressOf())))) {
+            return false;
+        }
     }
 
     D3D12_BUILD_RAYTRACING_ACCELERATION_STRUCTURE_DESC buildDesc = {};
     buildDesc.Inputs = blasInputs;
-    buildDesc.ScratchAccelerationStructureData = scratch->GetGPUVirtualAddress();
+    buildDesc.ScratchAccelerationStructureData = m_blasScratch->GetGPUVirtualAddress();
     buildDesc.DestAccelerationStructureData = m_blas->GetGPUVirtualAddress();
 
     ComPtr<ID3D12GraphicsCommandList4> cmdList4;
@@ -1496,11 +1540,14 @@ bool DX12Renderer::BuildAccelerationStructures(const std::vector<Vertex>& vertic
 
     D3D12_RESOURCE_DESC tlasScratchDesc = tlasDesc;
     tlasScratchDesc.Width = tlasInfo.ScratchDataSizeInBytes;
-    ComPtr<ID3D12Resource> tlasScratch;
-    if (FAILED(m_device->CreateCommittedResource(&defaultHeap, D3D12_HEAP_FLAG_NONE, &tlasScratchDesc,
-                                                 D3D12_RESOURCE_STATE_UNORDERED_ACCESS, nullptr,
-                                                 IID_PPV_ARGS(tlasScratch.GetAddressOf())))) {
-        return false;
+    if (!m_tlasScratch || m_tlasScratchSize < tlasScratchDesc.Width) {
+        m_tlasScratchSize = tlasScratchDesc.Width;
+        tlasScratchDesc.Width = m_tlasScratchSize;
+        if (FAILED(m_device->CreateCommittedResource(&defaultHeap, D3D12_HEAP_FLAG_NONE, &tlasScratchDesc,
+                                                     D3D12_RESOURCE_STATE_UNORDERED_ACCESS, nullptr,
+                                                     IID_PPV_ARGS(m_tlasScratch.ReleaseAndGetAddressOf())))) {
+            return false;
+        }
     }
 
     D3D12_RESOURCE_DESC instanceDesc = {};
@@ -1512,17 +1559,18 @@ bool DX12Renderer::BuildAccelerationStructures(const std::vector<Vertex>& vertic
     instanceDesc.SampleDesc.Count = 1;
     instanceDesc.Layout = D3D12_TEXTURE_LAYOUT_ROW_MAJOR;
 
-    ComPtr<ID3D12Resource> instanceBuffer;
-    D3D12_HEAP_PROPERTIES uploadHeap = {};
-    uploadHeap.Type = D3D12_HEAP_TYPE_UPLOAD;
-    if (FAILED(m_device->CreateCommittedResource(&uploadHeap2, D3D12_HEAP_FLAG_NONE, &instanceDesc,
-                                                 D3D12_RESOURCE_STATE_GENERIC_READ, nullptr,
-                                                 IID_PPV_ARGS(instanceBuffer.GetAddressOf())))) {
-        return false;
+    if (!m_instanceDescBuffer) {
+        D3D12_HEAP_PROPERTIES instHeap = {};
+        instHeap.Type = D3D12_HEAP_TYPE_UPLOAD;
+        if (FAILED(m_device->CreateCommittedResource(&instHeap, D3D12_HEAP_FLAG_NONE, &instanceDesc,
+                                                     D3D12_RESOURCE_STATE_GENERIC_READ, nullptr,
+                                                     IID_PPV_ARGS(m_instanceDescBuffer.GetAddressOf())))) {
+            return false;
+        }
     }
 
     D3D12_RAYTRACING_INSTANCE_DESC* instance = nullptr;
-    instanceBuffer->Map(0, nullptr, reinterpret_cast<void**>(&instance));
+    m_instanceDescBuffer->Map(0, nullptr, reinterpret_cast<void**>(&instance));
     memset(instance, 0, sizeof(D3D12_RAYTRACING_INSTANCE_DESC));
     instance->InstanceID = 0;
     instance->InstanceContributionToHitGroupIndex = 0;
@@ -1532,13 +1580,13 @@ bool DX12Renderer::BuildAccelerationStructures(const std::vector<Vertex>& vertic
     instance->Transform[0][0] = 1.0f;
     instance->Transform[1][1] = 1.0f;
     instance->Transform[2][2] = 1.0f;
-    instanceBuffer->Unmap(0, nullptr);
+    m_instanceDescBuffer->Unmap(0, nullptr);
 
     D3D12_BUILD_RAYTRACING_ACCELERATION_STRUCTURE_DESC tlasBuild = {};
     tlasBuild.Inputs = tlasInputs;
-    tlasBuild.Inputs.InstanceDescs = instanceBuffer->GetGPUVirtualAddress();
+    tlasBuild.Inputs.InstanceDescs = m_instanceDescBuffer->GetGPUVirtualAddress();
     tlasBuild.DestAccelerationStructureData = m_tlas->GetGPUVirtualAddress();
-    tlasBuild.ScratchAccelerationStructureData = tlasScratch->GetGPUVirtualAddress();
+    tlasBuild.ScratchAccelerationStructureData = m_tlasScratch->GetGPUVirtualAddress();
 
     cmdList4->BuildRaytracingAccelerationStructure(&tlasBuild, 0, nullptr);
     uavBarrier.UAV.pResource = m_tlas.Get();

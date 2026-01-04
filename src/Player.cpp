@@ -275,8 +275,6 @@ void Player::CreateMesh(ID3D11Device* device) {
         Vector3 min = center - size * 0.5f;
         Vector3 max = center + size * 0.5f;
 
-        uint32_t baseIdx = static_cast<uint32_t>(m_vertices.size());
-
         Vector3 corners[8] = {
             Vector3(min.x, min.y, min.z),
             Vector3(max.x, min.y, min.z),
@@ -304,10 +302,24 @@ void Player::CreateMesh(ID3D11Device* device) {
 
         for (int f = 0; f < 6; f++) {
             uint32_t faceBase = static_cast<uint32_t>(m_vertices.size());
+            int faceIndices[4] = {
+                faces[f].indices[0],
+                faces[f].indices[1],
+                faces[f].indices[2],
+                faces[f].indices[3]
+            };
+
+            Vector3 p0 = corners[faceIndices[0]];
+            Vector3 p1 = corners[faceIndices[1]];
+            Vector3 p2 = corners[faceIndices[2]];
+            Vector3 triNormal = (p1 - p0).cross(p2 - p0).normalized();
+            if (triNormal.dot(faces[f].normal) < 0.0f) {
+                std::swap(faceIndices[1], faceIndices[3]);
+            }
 
             for (int i = 0; i < 4; i++) {
                 Vertex v;
-                v.position = corners[faces[f].indices[i]];
+                v.position = corners[faceIndices[i]];
                 v.normal = faces[f].normal;
                 v.color = color;
                 v.texCoord = Vector2(i % 2, i / 2);

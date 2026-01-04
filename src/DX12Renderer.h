@@ -99,10 +99,21 @@ private:
 
     ComPtr<ID3D12Resource> m_vertexBuffer;
     ComPtr<ID3D12Resource> m_indexBuffer;
+    ComPtr<ID3D12Resource> m_vertexUpload;
+    ComPtr<ID3D12Resource> m_indexUpload;
     ComPtr<ID3D12Resource> m_blas;
     ComPtr<ID3D12Resource> m_tlas;
+    ComPtr<ID3D12Resource> m_blasScratch;
+    ComPtr<ID3D12Resource> m_tlasScratch;
+    ComPtr<ID3D12Resource> m_instanceDescBuffer;
     UINT64 m_vertexBufferSize;
     UINT64 m_indexBufferSize;
+    UINT64 m_vertexUploadSize;
+    UINT64 m_indexUploadSize;
+    UINT64 m_blasScratchSize;
+    UINT64 m_tlasScratchSize;
+    D3D12_RESOURCE_STATES m_vertexBufferState;
+    D3D12_RESOURCE_STATES m_indexBufferState;
     bool m_outputInCopySource;
 
     ComPtr<ID3D12RootSignature> m_rasterRootSig;
