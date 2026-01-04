@@ -174,49 +174,59 @@ void Chunk::UpdateBuffer(ID3D11Device* device) {
 
     if (m_vertices.empty()) {
         m_indexCount = 0;
-        m_needsBufferUpdate = false;
-        return;
+        m_vertexBuffer.Reset();
+        m_indexBuffer.Reset();
+    } else {
+        // Create vertex buffer
+        D3D11_BUFFER_DESC vbDesc = {};
+        vbDesc.Usage = D3D11_USAGE_DEFAULT;
+        vbDesc.ByteWidth = static_cast<UINT>(m_vertices.size() * sizeof(Vertex));
+        vbDesc.BindFlags = D3D11_BIND_VERTEX_BUFFER;
+
+        D3D11_SUBRESOURCE_DATA vbData = {};
+        vbData.pSysMem = m_vertices.data();
+
+        device->CreateBuffer(&vbDesc, &vbData, m_vertexBuffer.ReleaseAndGetAddressOf());
+
+        // Create index buffer
+        D3D11_BUFFER_DESC ibDesc = {};
+        ibDesc.Usage = D3D11_USAGE_DEFAULT;
+        ibDesc.ByteWidth = static_cast<UINT>(m_indices.size() * sizeof(uint32_t));
+        ibDesc.BindFlags = D3D11_BIND_INDEX_BUFFER;
+
+        D3D11_SUBRESOURCE_DATA ibData = {};
+        ibData.pSysMem = m_indices.data();
+
+        device->CreateBuffer(&ibDesc, &ibData, m_indexBuffer.ReleaseAndGetAddressOf());
+
+        m_indexCount = static_cast<uint32_t>(m_indices.size());
     }
-
-    // Create vertex buffer
-    D3D11_BUFFER_DESC vbDesc = {};
-    vbDesc.Usage = D3D11_USAGE_DEFAULT;
-    vbDesc.ByteWidth = static_cast<UINT>(m_vertices.size() * sizeof(Vertex));
-    vbDesc.BindFlags = D3D11_BIND_VERTEX_BUFFER;
-
-    D3D11_SUBRESOURCE_DATA vbData = {};
-    vbData.pSysMem = m_vertices.data();
-
-    device->CreateBuffer(&vbDesc, &vbData, m_vertexBuffer.ReleaseAndGetAddressOf());
-
-    // Create index buffer
-    D3D11_BUFFER_DESC ibDesc = {};
-    ibDesc.Usage = D3D11_USAGE_DEFAULT;
-    ibDesc.ByteWidth = static_cast<UINT>(m_indices.size() * sizeof(uint32_t));
-    ibDesc.BindFlags = D3D11_BIND_INDEX_BUFFER;
-
-    D3D11_SUBRESOURCE_DATA ibData = {};
-    ibData.pSysMem = m_indices.data();
-
-    device->CreateBuffer(&ibDesc, &ibData, m_indexBuffer.ReleaseAndGetAddressOf());
-
-    m_indexCount = static_cast<uint32_t>(m_indices.size());
     
     // Create transparent vertex buffer
-    if (!m_transparentVertices.empty()) {
+    if (m_transparentVertices.empty()) {
+        m_transparentIndexCount = 0;
+        m_transparentVertexBuffer.Reset();
+        m_transparentIndexBuffer.Reset();
+    } else {
+        D3D11_BUFFER_DESC vbDesc = {};
+        vbDesc.Usage = D3D11_USAGE_DEFAULT;
         vbDesc.ByteWidth = static_cast<UINT>(m_transparentVertices.size() * sizeof(Vertex));
+        vbDesc.BindFlags = D3D11_BIND_VERTEX_BUFFER;
+        
+        D3D11_SUBRESOURCE_DATA vbData = {};
         vbData.pSysMem = m_transparentVertices.data();
         device->CreateBuffer(&vbDesc, &vbData, m_transparentVertexBuffer.ReleaseAndGetAddressOf());
 
+        D3D11_BUFFER_DESC ibDesc = {};
+        ibDesc.Usage = D3D11_USAGE_DEFAULT;
         ibDesc.ByteWidth = static_cast<UINT>(m_transparentIndices.size() * sizeof(uint32_t));
+        ibDesc.BindFlags = D3D11_BIND_INDEX_BUFFER;
+
+        D3D11_SUBRESOURCE_DATA ibData = {};
         ibData.pSysMem = m_transparentIndices.data();
         device->CreateBuffer(&ibDesc, &ibData, m_transparentIndexBuffer.ReleaseAndGetAddressOf());
 
         m_transparentIndexCount = static_cast<uint32_t>(m_transparentIndices.size());
-    } else {
-        m_transparentIndexCount = 0;
-        m_transparentVertexBuffer.ReleaseAndGetAddressOf();
-        m_transparentIndexBuffer.ReleaseAndGetAddressOf();
     }
 
     m_needsBufferUpdate = false; // Buffer is now up to date

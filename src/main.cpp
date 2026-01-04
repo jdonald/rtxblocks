@@ -38,7 +38,7 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
 
     // Create player - spawn above terrain
     Player player;
-    player.SetPosition(Vector3(0, 120, 0)); // Start higher to ensure above terrain
+    player.SetPosition(Vector3(0, 80, 0)); // Start closer to the ground
 
     // Create some cows
     std::vector<std::unique_ptr<Mob>> mobs;
