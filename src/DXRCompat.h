@@ -2,6 +2,11 @@
 #include <windows.h>
 #include <d3d12.h>
 
+// Use the native DX12 SRV description when DXR is available in system headers.
+#if defined(__ID3D12Device5_INTERFACE_DEFINED__) && !defined(D3D12_SHADER_RESOURCE_VIEW_DESC_RTX)
+typedef D3D12_SHADER_RESOURCE_VIEW_DESC D3D12_SHADER_RESOURCE_VIEW_DESC_RTX;
+#endif
+
 // Forward declarations for DXR-related types missing from older headers.
 #if !defined(__ID3D12Device5_INTERFACE_DEFINED__)
 #ifndef RTXBLOCKS_D3D12_MISC_TYPES

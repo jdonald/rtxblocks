@@ -92,10 +92,10 @@ static void AppendMeshTransformed(const std::vector<Vertex>& srcVerts,
 }
 
 namespace {
-static const GUID IID_ID3D12Device5 = {0x8b4f173b, 0x2fea, 0x4b80, {0x8f, 0x58, 0x43, 0x07, 0x19, 0x1a, 0xb9, 0x5d}};
-static const GUID IID_ID3D12GraphicsCommandList4 = {0x8754318e, 0xd3a9, 0x4541, {0x98, 0xcf, 0x64, 0x5b, 0x50, 0xdc, 0x48, 0x74}};
-static const GUID IID_ID3D12StateObjectProperties = {0xde5fa827, 0x9bf9, 0x4f26, {0x89, 0xff, 0xd7, 0xf5, 0x6f, 0xde, 0x38, 0x60}};
-static const GUID IID_ID3D12StateObject = {0x47016943, 0xfca8, 0x4594, {0x93, 0xea, 0xaf, 0x25, 0x8b, 0x55, 0x34, 0x6d}};
+static const GUID kIID_ID3D12Device5 = {0x8b4f173b, 0x2fea, 0x4b80, {0x8f, 0x58, 0x43, 0x07, 0x19, 0x1a, 0xb9, 0x5d}};
+static const GUID kIID_ID3D12GraphicsCommandList4 = {0x8754318e, 0xd3a9, 0x4541, {0x98, 0xcf, 0x64, 0x5b, 0x50, 0xdc, 0x48, 0x74}};
+static const GUID kIID_ID3D12StateObjectProperties = {0xde5fa827, 0x9bf9, 0x4f26, {0x89, 0xff, 0xd7, 0xf5, 0x6f, 0xde, 0x38, 0x60}};
+static const GUID kIID_ID3D12StateObject = {0x47016943, 0xfca8, 0x4594, {0x93, 0xea, 0xaf, 0x25, 0x8b, 0x55, 0x34, 0x6d}};
 }
 
 DX12Renderer::DX12Renderer()
@@ -1104,7 +1104,7 @@ bool DX12Renderer::InitializeRaytracing() {
 
 bool DX12Renderer::CreateRaytracingPipeline() {
     ComPtr<ID3D12Device5> device5;
-    if (FAILED(m_device->QueryInterface(IID_ID3D12Device5, reinterpret_cast<void**>(device5.GetAddressOf())))) {
+    if (FAILED(m_device->QueryInterface(kIID_ID3D12Device5, reinterpret_cast<void**>(device5.GetAddressOf())))) {
         return false;
     }
 
@@ -1221,7 +1221,7 @@ bool DX12Renderer::CreateRaytracingPipeline() {
     stateDesc.pSubobjects = subobjects;
 
     void* stateObj = nullptr;
-    if (FAILED(device5->CreateStateObject(&stateDesc, IID_ID3D12StateObject, &stateObj))) {
+    if (FAILED(device5->CreateStateObject(&stateDesc, kIID_ID3D12StateObject, &stateObj))) {
         return false;
     }
     m_rtStateObject.Attach(reinterpret_cast<ID3D12StateObject*>(stateObj));
@@ -1420,7 +1420,7 @@ bool DX12Renderer::BuildAccelerationStructures(const std::vector<Vertex>& vertic
 
     D3D12_RAYTRACING_ACCELERATION_STRUCTURE_PREBUILD_INFO blasInfo = {};
     ComPtr<ID3D12Device5> device5;
-    if (FAILED(m_device->QueryInterface(IID_ID3D12Device5, reinterpret_cast<void**>(device5.GetAddressOf())))) {
+    if (FAILED(m_device->QueryInterface(kIID_ID3D12Device5, reinterpret_cast<void**>(device5.GetAddressOf())))) {
         return false;
     }
     device5->GetRaytracingAccelerationStructurePrebuildInfo(&blasInputs, &blasInfo);
@@ -1459,7 +1459,7 @@ bool DX12Renderer::BuildAccelerationStructures(const std::vector<Vertex>& vertic
     buildDesc.DestAccelerationStructureData = m_blas->GetGPUVirtualAddress();
 
     ComPtr<ID3D12GraphicsCommandList4> cmdList4;
-    if (FAILED(m_commandList->QueryInterface(IID_ID3D12GraphicsCommandList4, reinterpret_cast<void**>(cmdList4.GetAddressOf())))) {
+    if (FAILED(m_commandList->QueryInterface(kIID_ID3D12GraphicsCommandList4, reinterpret_cast<void**>(cmdList4.GetAddressOf())))) {
         return false;
     }
     cmdList4->BuildRaytracingAccelerationStructure(&buildDesc, 0, nullptr);
@@ -1549,7 +1549,7 @@ bool DX12Renderer::BuildAccelerationStructures(const std::vector<Vertex>& vertic
 
 bool DX12Renderer::CreateShaderTable() {
     ComPtr<ID3D12StateObjectProperties> props;
-    if (FAILED(m_rtStateObject->QueryInterface(IID_ID3D12StateObjectProperties, reinterpret_cast<void**>(props.GetAddressOf())))) {
+    if (FAILED(m_rtStateObject->QueryInterface(kIID_ID3D12StateObjectProperties, reinterpret_cast<void**>(props.GetAddressOf())))) {
         return false;
     }
 
@@ -1695,7 +1695,7 @@ bool DX12Renderer::RenderRaytracing(World* world, const Camera& camera, const UI
     m_device->CreateUnorderedAccessView(m_outputTexture.Get(), nullptr, &uavDesc, cpuHandle);
 
     ComPtr<ID3D12GraphicsCommandList4> cmdList4;
-    if (FAILED(m_commandList->QueryInterface(IID_ID3D12GraphicsCommandList4, reinterpret_cast<void**>(cmdList4.GetAddressOf())))) {
+    if (FAILED(m_commandList->QueryInterface(kIID_ID3D12GraphicsCommandList4, reinterpret_cast<void**>(cmdList4.GetAddressOf())))) {
         return false;
     }
 
