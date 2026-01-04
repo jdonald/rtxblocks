@@ -67,8 +67,8 @@ bool Chunk::ShouldRenderFace(int x, int y, int z, BlockFace::Face face) const {
         return false;
     }
 
-    // Render if neighbor is air or different transparent block
-    return neighbor.IsAir() || neighbor.type != currentBlock.type;
+    // Render if neighbor is air, water (treated as air), or different transparent block
+    return neighbor.IsAir() || neighbor.IsLiquid() || neighbor.type != currentBlock.type;
 }
 
 void Chunk::AddBlockFace(const Vector3& pos, BlockFace::Face face, const Vector4& color) {
@@ -143,7 +143,7 @@ void Chunk::GenerateMesh() {
         for (int y = 0; y < CHUNK_HEIGHT; y++) {
             for (int z = 0; z < CHUNK_SIZE; z++) {
                 Block block = GetBlock(x, y, z);
-                if (block.IsAir()) continue;
+                if (block.IsAir() || block.IsLiquid()) continue; // Skip air and water (water treated as transparent)
 
                 // Position in world coordinates (not just chunk-local)
                 Vector3 blockPos(chunkOffset.x + x, y, chunkOffset.z + z);
