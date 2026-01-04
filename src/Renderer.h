@@ -55,6 +55,7 @@ public:
 
     void BeginFrame();
     void EndFrame();
+    void Resize(int width, int height);
 
     void RenderWorld(World* world, Camera& camera);
     void RenderMob(Mob* mob, Camera& camera);

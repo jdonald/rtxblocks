@@ -507,6 +507,39 @@ void Renderer::EndFrame() {
     m_swapChain->Present(1, 0);
 }
 
+void Renderer::Resize(int width, int height) {
+    if (width <= 0 || height <= 0) {
+        return;
+    }
+    if (width == m_width && height == m_height) {
+        return;
+    }
+
+    m_width = width;
+    m_height = height;
+
+    if (m_context) {
+        m_context->OMSetRenderTargets(0, nullptr, nullptr);
+    }
+
+    m_backBufferRTV.Reset();
+    m_depthStencilView.Reset();
+    m_depthStencilTexture.Reset();
+
+    m_swapChain->ResizeBuffers(0, m_width, m_height, DXGI_FORMAT_UNKNOWN, 0);
+    CreateRenderTargets();
+    CreateDepthStencil(m_width, m_height);
+
+    D3D11_VIEWPORT viewport = {};
+    viewport.TopLeftX = 0;
+    viewport.TopLeftY = 0;
+    viewport.Width = static_cast<float>(m_width);
+    viewport.Height = static_cast<float>(m_height);
+    viewport.MinDepth = 0.0f;
+    viewport.MaxDepth = 1.0f;
+    m_context->RSSetViewports(1, &viewport);
+}
+
 void Renderer::UpdateConstantBuffer(const Matrix4x4& world, const Matrix4x4& view, const Matrix4x4& proj) {
     ConstantBuffer cb;
     cb.world = world.Transpose();
@@ -581,7 +614,7 @@ void Renderer::RenderWorld(World* world, Camera& camera) {
     m_context->OMSetBlendState(m_alphaBlendState.Get(), blendFactor, 0xFFFFFFFF);
     m_context->OMSetDepthStencilState(m_depthReadOnlyState.Get(), 0);
 
-    world->RenderTransparent(m_context.Get());
+    world->RenderTransparent(m_context.Get(), camera.GetPosition());
 
     // Reset states
     m_context->OMSetBlendState(nullptr, blendFactor, 0xFFFFFFFF);

@@ -262,8 +262,8 @@ void Player::AddBlockToInventory(BlockType type) {
 void Player::CreateMesh(ID3D11Device* device) {
     if (!device) return;
 
-    std::vector<Vertex> vertices;
-    std::vector<uint32_t> indices;
+    m_vertices.clear();
+    m_indices.clear();
 
     Vector4 skinColor(0.95f, 0.80f, 0.65f, 1.0f);
     Vector4 shirtColor(0.2f, 0.6f, 0.9f, 1.0f);
@@ -275,7 +275,7 @@ void Player::CreateMesh(ID3D11Device* device) {
         Vector3 min = center - size * 0.5f;
         Vector3 max = center + size * 0.5f;
 
-        uint32_t baseIdx = static_cast<uint32_t>(vertices.size());
+        uint32_t baseIdx = static_cast<uint32_t>(m_vertices.size());
 
         Vector3 corners[8] = {
             Vector3(min.x, min.y, min.z),
@@ -303,7 +303,7 @@ void Player::CreateMesh(ID3D11Device* device) {
         };
 
         for (int f = 0; f < 6; f++) {
-            uint32_t faceBase = static_cast<uint32_t>(vertices.size());
+            uint32_t faceBase = static_cast<uint32_t>(m_vertices.size());
 
             for (int i = 0; i < 4; i++) {
                 Vertex v;
@@ -311,15 +311,15 @@ void Player::CreateMesh(ID3D11Device* device) {
                 v.normal = faces[f].normal;
                 v.color = color;
                 v.texCoord = Vector2(i % 2, i / 2);
-                vertices.push_back(v);
+                m_vertices.push_back(v);
             }
 
-            indices.push_back(faceBase);
-            indices.push_back(faceBase + 1);
-            indices.push_back(faceBase + 2);
-            indices.push_back(faceBase);
-            indices.push_back(faceBase + 2);
-            indices.push_back(faceBase + 3);
+            m_indices.push_back(faceBase);
+            m_indices.push_back(faceBase + 1);
+            m_indices.push_back(faceBase + 2);
+            m_indices.push_back(faceBase);
+            m_indices.push_back(faceBase + 2);
+            m_indices.push_back(faceBase + 3);
         }
     };
 
@@ -340,29 +340,29 @@ void Player::CreateMesh(ID3D11Device* device) {
     addBox(Vector3(-0.25f, 0.05f, 0.0f), Vector3(0.32f, 0.1f, 0.32f), shoeColor);
     addBox(Vector3(0.25f, 0.05f, 0.0f), Vector3(0.32f, 0.1f, 0.32f), shoeColor);
 
-    if (vertices.empty()) return;
+    if (m_vertices.empty()) return;
 
     D3D11_BUFFER_DESC vbDesc = {};
     vbDesc.Usage = D3D11_USAGE_DEFAULT;
-    vbDesc.ByteWidth = static_cast<UINT>(vertices.size() * sizeof(Vertex));
+    vbDesc.ByteWidth = static_cast<UINT>(m_vertices.size() * sizeof(Vertex));
     vbDesc.BindFlags = D3D11_BIND_VERTEX_BUFFER;
 
     D3D11_SUBRESOURCE_DATA vbData = {};
-    vbData.pSysMem = vertices.data();
+    vbData.pSysMem = m_vertices.data();
 
     device->CreateBuffer(&vbDesc, &vbData, m_vertexBuffer.ReleaseAndGetAddressOf());
 
     D3D11_BUFFER_DESC ibDesc = {};
     ibDesc.Usage = D3D11_USAGE_DEFAULT;
-    ibDesc.ByteWidth = static_cast<UINT>(indices.size() * sizeof(uint32_t));
+    ibDesc.ByteWidth = static_cast<UINT>(m_indices.size() * sizeof(uint32_t));
     ibDesc.BindFlags = D3D11_BIND_INDEX_BUFFER;
 
     D3D11_SUBRESOURCE_DATA ibData = {};
-    ibData.pSysMem = indices.data();
+    ibData.pSysMem = m_indices.data();
 
     device->CreateBuffer(&ibDesc, &ibData, m_indexBuffer.ReleaseAndGetAddressOf());
 
-    m_indexCount = static_cast<uint32_t>(indices.size());
+    m_indexCount = static_cast<uint32_t>(m_indices.size());
 }
 
 void Player::Render(ID3D11DeviceContext* context) {

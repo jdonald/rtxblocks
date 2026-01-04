@@ -43,6 +43,10 @@ public:
 
     uint32_t GetSolidIndexCount() const { return m_indexCount; }
     uint32_t GetTransparentIndexCount() const { return m_transparentIndexCount; }
+    const std::vector<Vertex>& GetSolidVertices() const { return m_vertices; }
+    const std::vector<uint32_t>& GetSolidIndices() const { return m_indices; }
+    const std::vector<Vertex>& GetTransparentVertices() const { return m_transparentVertices; }
+    const std::vector<uint32_t>& GetTransparentIndices() const { return m_transparentIndices; }
 
     Vector3 GetWorldPosition() const {
         return Vector3(m_chunkX * CHUNK_SIZE, 0, m_chunkZ * CHUNK_SIZE);

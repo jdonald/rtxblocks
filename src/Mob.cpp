@@ -131,38 +131,38 @@ void Mob::CreateCowMesh(std::vector<Vertex>& vertices, std::vector<uint32_t>& in
 }
 
 void Mob::CreateMesh(ID3D11Device* device) {
-    std::vector<Vertex> vertices;
-    std::vector<uint32_t> indices;
+    m_vertices.clear();
+    m_indices.clear();
 
     if (m_type == MobType::Cow) {
-        CreateCowMesh(vertices, indices);
+        CreateCowMesh(m_vertices, m_indices);
     }
 
-    if (vertices.empty()) return;
+    if (m_vertices.empty()) return;
 
     // Create vertex buffer
     D3D11_BUFFER_DESC vbDesc = {};
     vbDesc.Usage = D3D11_USAGE_DEFAULT;
-    vbDesc.ByteWidth = static_cast<UINT>(vertices.size() * sizeof(Vertex));
+    vbDesc.ByteWidth = static_cast<UINT>(m_vertices.size() * sizeof(Vertex));
     vbDesc.BindFlags = D3D11_BIND_VERTEX_BUFFER;
 
     D3D11_SUBRESOURCE_DATA vbData = {};
-    vbData.pSysMem = vertices.data();
+    vbData.pSysMem = m_vertices.data();
 
     device->CreateBuffer(&vbDesc, &vbData, m_vertexBuffer.ReleaseAndGetAddressOf());
 
     // Create index buffer
     D3D11_BUFFER_DESC ibDesc = {};
     ibDesc.Usage = D3D11_USAGE_DEFAULT;
-    ibDesc.ByteWidth = static_cast<UINT>(indices.size() * sizeof(uint32_t));
+    ibDesc.ByteWidth = static_cast<UINT>(m_indices.size() * sizeof(uint32_t));
     ibDesc.BindFlags = D3D11_BIND_INDEX_BUFFER;
 
     D3D11_SUBRESOURCE_DATA ibData = {};
-    ibData.pSysMem = indices.data();
+    ibData.pSysMem = m_indices.data();
 
     device->CreateBuffer(&ibDesc, &ibData, m_indexBuffer.ReleaseAndGetAddressOf());
 
-    m_indexCount = static_cast<uint32_t>(indices.size());
+    m_indexCount = static_cast<uint32_t>(m_indices.size());
 }
 
 void Mob::Render(ID3D11DeviceContext* context) {

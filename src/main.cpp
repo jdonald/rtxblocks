@@ -5,6 +5,7 @@
 #include "Mob.h"
 #include "BlockDatabase.h"
 #include "SoundSystem.h"
+#include "DX12Renderer.h"
 #include <windows.h>
 #include <chrono>
 #include <vector>
@@ -28,6 +29,9 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
         MessageBox(nullptr, "Failed to initialize renderer", "Error", MB_OK);
         return -1;
     }
+
+    DX12Renderer dx12Renderer;
+    bool dx12Ready = dx12Renderer.Initialize(&window);
 
     // Create sound system
     SoundSystem soundSystem;
@@ -68,6 +72,8 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
     float fpsAccumulator = 0.0f;
     int frameCount = 0;
     float currentFPS = 60.0f;
+    int lastWidth = window.GetWidth();
+    int lastHeight = window.GetHeight();
 
     while (running) {
         // Calculate delta time
@@ -113,10 +119,7 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
         if (window.WasKeyPressed('K')) {
             if (renderer.GetRenderMode() == RenderMode::Rasterization) {
                 renderer.SetRenderMode(RenderMode::Raytracing);
-                MessageBox(nullptr,
-                          "Raytracing mode is stubbed for future DXR implementation.\n"
-                          "Switching back to rasterization.",
-                          "Info", MB_OK);
+            } else {
                 renderer.SetRenderMode(RenderMode::Rasterization);
             }
         }
@@ -130,6 +133,17 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
             static_cast<float>(window.GetHeight())
         );
 
+        int width = window.GetWidth();
+        int height = window.GetHeight();
+        if (width != lastWidth || height != lastHeight) {
+            if (dx12Ready) {
+                dx12Renderer.Resize(static_cast<UINT>(width), static_cast<UINT>(height));
+            }
+            renderer.Resize(width, height);
+            lastWidth = width;
+            lastHeight = height;
+        }
+
         // Update world (load/unload chunks)
         world.Update(player.GetPosition(), renderer.GetDevice());
 
@@ -139,44 +153,73 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
         }
 
         // Render
-        renderer.BeginFrame();
-        renderer.RenderWorld(&world, player.GetCamera());
+        bool usedDx12 = false;
+        if (dx12Ready) {
+            DX12Renderer::UIInfo uiInfo;
+            uiInfo.fps = currentFPS;
+            uiInfo.showDebug = renderer.IsDebugHUDVisible();
+            uiInfo.selectedSlot = player.GetSelectedSlot();
 
-        // Render mobs
-        for (auto& mob : mobs) {
-            renderer.RenderMob(mob.get(), player.GetCamera());
-        }
-
-        renderer.RenderPlayer(&player, player.GetCamera());
-
-        renderer.RenderUI(&player);
-
-        // Render debug HUD if enabled
-        if (renderer.IsDebugHUDVisible()) {
-            DebugInfo debugInfo;
-            debugInfo.fps = currentFPS;
-
-            World::DebugStats worldStats = world.GetDebugStats();
-            debugInfo.loadedChunkCount = worldStats.chunkCount;
-            debugInfo.solidIndexCount = worldStats.solidIndexCount;
-            debugInfo.transparentIndexCount = worldStats.transparentIndexCount;
-
-            // Raycast to find looked-at block
             Vector3 hitPos, hitNormal;
             Block hitBlock;
             Camera& cam = player.GetCamera();
             if (world.Raycast(cam.GetPosition(), cam.GetForward(), 50.0f, hitPos, hitNormal, hitBlock)) {
-                debugInfo.hasLookedAtBlock = true;
-                debugInfo.lookedAtBlockType = hitBlock.type;
-                debugInfo.lookedAtBlockPos = hitPos;
-            } else {
-                debugInfo.hasLookedAtBlock = false;
+                uiInfo.hasLookedAtBlock = true;
+                uiInfo.lookedAtBlockName = BlockDatabase::GetProperties(hitBlock.type).name;
             }
 
-            renderer.RenderDebugHUD(debugInfo);
+            if (renderer.GetRenderMode() == RenderMode::Raytracing) {
+                usedDx12 = dx12Renderer.RenderRaytracing(&world, player.GetCamera(), uiInfo);
+            } else {
+                std::vector<Mob*> mobPtrs;
+                mobPtrs.reserve(mobs.size());
+                for (auto& mob : mobs) {
+                    mobPtrs.push_back(mob.get());
+                }
+                usedDx12 = dx12Renderer.RenderRasterization(&world, player.GetCamera(), uiInfo, &player, mobPtrs);
+            }
         }
 
-        renderer.EndFrame();
+        if (!usedDx12) {
+            renderer.BeginFrame();
+            renderer.RenderWorld(&world, player.GetCamera());
+
+            // Render mobs
+            for (auto& mob : mobs) {
+                renderer.RenderMob(mob.get(), player.GetCamera());
+            }
+
+            renderer.RenderPlayer(&player, player.GetCamera());
+
+            renderer.RenderUI(&player);
+
+            // Render debug HUD if enabled
+            if (renderer.IsDebugHUDVisible()) {
+                DebugInfo debugInfo;
+                debugInfo.fps = currentFPS;
+
+                World::DebugStats worldStats = world.GetDebugStats();
+                debugInfo.loadedChunkCount = worldStats.chunkCount;
+                debugInfo.solidIndexCount = worldStats.solidIndexCount;
+                debugInfo.transparentIndexCount = worldStats.transparentIndexCount;
+
+                // Raycast to find looked-at block
+                Vector3 hitPos, hitNormal;
+                Block hitBlock;
+                Camera& cam = player.GetCamera();
+                if (world.Raycast(cam.GetPosition(), cam.GetForward(), 50.0f, hitPos, hitNormal, hitBlock)) {
+                    debugInfo.hasLookedAtBlock = true;
+                    debugInfo.lookedAtBlockType = hitBlock.type;
+                    debugInfo.lookedAtBlockPos = hitPos;
+                } else {
+                    debugInfo.hasLookedAtBlock = false;
+                }
+
+                renderer.RenderDebugHUD(debugInfo);
+            }
+
+            renderer.EndFrame();
+        }
     }
 
     return 0;

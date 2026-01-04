@@ -29,6 +29,8 @@ public:
     void CreateMesh(ID3D11Device* device);
     void Render(ID3D11DeviceContext* context);
     Matrix4x4 GetWorldMatrix() const;
+    const std::vector<Vertex>& GetVertices() const { return m_vertices; }
+    const std::vector<uint32_t>& GetIndices() const { return m_indices; }
 
 private:
     void UpdateMovement(float deltaTime, Window* window, World* world, SoundSystem* soundSystem);
@@ -66,4 +68,6 @@ private:
     Microsoft::WRL::ComPtr<ID3D11Buffer> m_vertexBuffer;
     Microsoft::WRL::ComPtr<ID3D11Buffer> m_indexBuffer;
     uint32_t m_indexCount;
+    std::vector<Vertex> m_vertices;
+    std::vector<uint32_t> m_indices;
 };
