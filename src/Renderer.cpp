@@ -603,6 +603,22 @@ void Renderer::RenderMob(Mob* mob, Camera& camera) {
     mob->Render(m_context.Get());
 }
 
+void Renderer::RenderPlayer(Player* player, Camera& camera) {
+    if (!player) return;
+    if (camera.GetMode() == CameraMode::FirstPerson) return;
+
+    Matrix4x4 worldMatrix = player->GetWorldMatrix();
+    Matrix4x4 viewMatrix = camera.GetViewMatrix();
+    Matrix4x4 projMatrix = camera.GetProjectionMatrix();
+
+    UpdateConstantBuffer(worldMatrix, viewMatrix, projMatrix);
+
+    m_context->VSSetConstantBuffers(0, 1, m_constantBuffer.GetAddressOf());
+    m_context->PSSetConstantBuffers(0, 1, m_constantBuffer.GetAddressOf());
+
+    player->Render(m_context.Get());
+}
+
 void Renderer::RenderUI(Player* player) {
     // Simple UI rendering - draw inventory bar
     std::vector<UIVertex> vertices;

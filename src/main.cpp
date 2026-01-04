@@ -44,6 +44,7 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
         spawnY = static_cast<float>(CHUNK_HEIGHT - 2);
     }
     player.SetPosition(Vector3(0, spawnY, 0));
+    player.CreateMesh(renderer.GetDevice());
 
     // Create some cows
     std::vector<std::unique_ptr<Mob>> mobs;
@@ -109,7 +110,7 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
         }
 
         // Toggle render mode (stubbed raytracing)
-        if (window.WasKeyPressed('R')) {
+        if (window.WasKeyPressed('K')) {
             if (renderer.GetRenderMode() == RenderMode::Rasterization) {
                 renderer.SetRenderMode(RenderMode::Raytracing);
                 MessageBox(nullptr,
@@ -145,6 +146,8 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
         for (auto& mob : mobs) {
             renderer.RenderMob(mob.get(), player.GetCamera());
         }
+
+        renderer.RenderPlayer(&player, player.GetCamera());
 
         renderer.RenderUI(&player);
 

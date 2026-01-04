@@ -58,6 +58,7 @@ public:
 
     void RenderWorld(World* world, Camera& camera);
     void RenderMob(Mob* mob, Camera& camera);
+    void RenderPlayer(Player* player, Camera& camera);
     void RenderUI(Player* player);
     void RenderDebugHUD(const DebugInfo& debugInfo);
 
