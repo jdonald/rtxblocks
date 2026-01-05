@@ -182,9 +182,11 @@ bool DX12Renderer::CreateDevice(Window* window) {
     }
 
     ComPtr<IDXGIAdapter1> adapter;
-    ComPtr<IDXGIAdapter1> selectedAdapter;
-    std::string adapterName;
+    ComPtr<IDXGIAdapter1> bestAdapter;
+    DXGI_ADAPTER_DESC1 bestDesc = {};
+    SIZE_T bestVideoMemory = 0;
 
+    // Find the adapter with the most dedicated video memory (discrete GPU)
     for (UINT adapterIndex = 0;
          factory->EnumAdapters1(adapterIndex, adapter.ReleaseAndGetAddressOf()) != DXGI_ERROR_NOT_FOUND;
          ++adapterIndex) {
@@ -193,24 +195,37 @@ bool DX12Renderer::CreateDevice(Window* window) {
         if (desc.Flags & DXGI_ADAPTER_FLAG_SOFTWARE) {
             continue;
         }
-        if (SUCCEEDED(D3D12CreateDevice(adapter.Get(), D3D_FEATURE_LEVEL_12_1, IID_PPV_ARGS(m_device.GetAddressOf())))) {
-            selectedAdapter = adapter;
-            // Convert wide string to narrow for debug
-            char narrowName[128] = {0};
-            for (int i = 0; i < 127 && desc.Description[i]; i++) {
-                narrowName[i] = static_cast<char>(desc.Description[i]);
-            }
-            adapterName = narrowName;
-            break;
+
+        // Check if this adapter supports D3D12
+        ComPtr<ID3D12Device> testDevice;
+        if (FAILED(D3D12CreateDevice(adapter.Get(), D3D_FEATURE_LEVEL_12_1, IID_PPV_ARGS(testDevice.GetAddressOf())))) {
+            continue;
+        }
+
+        // Prefer adapter with more dedicated video memory (discrete GPUs have more)
+        if (desc.DedicatedVideoMemory > bestVideoMemory) {
+            bestVideoMemory = desc.DedicatedVideoMemory;
+            bestAdapter = adapter;
+            bestDesc = desc;
         }
     }
 
-    if (!m_device) {
+    if (!bestAdapter) {
         return false;
     }
 
-    // Store adapter name for debugging
-    m_rtLastError = "GPU: " + adapterName;
+    // Create device on the best adapter
+    if (FAILED(D3D12CreateDevice(bestAdapter.Get(), D3D_FEATURE_LEVEL_12_1, IID_PPV_ARGS(m_device.GetAddressOf())))) {
+        return false;
+    }
+
+    // Convert wide string to narrow for debug
+    char narrowName[128] = {0};
+    for (int i = 0; i < 127 && bestDesc.Description[i]; i++) {
+        narrowName[i] = static_cast<char>(bestDesc.Description[i]);
+    }
+    m_rtLastError = "GPU: ";
+    m_rtLastError += narrowName;
 
     return true;
 }
