@@ -1119,12 +1119,26 @@ bool DX12Renderer::RenderRasterization(World* world, const Camera& camera, const
 bool DX12Renderer::InitializeRaytracing() {
     m_rtStatus = "Checking DXR support...";
     D3D12_FEATURE_DATA_D3D12_OPTIONS5 options5 = {};
-    if (FAILED(m_device->CheckFeatureSupport(D3D12_FEATURE_D3D12_OPTIONS5, &options5, sizeof(options5)))) {
-        m_rtStatus = "DXR: CheckFeatureSupport failed";
+    HRESULT hr = m_device->CheckFeatureSupport(D3D12_FEATURE_D3D12_OPTIONS5, &options5, sizeof(options5));
+    if (FAILED(hr)) {
+        char buf[128];
+        sprintf(buf, "DXR: CheckFeature failed (0x%08X)", static_cast<unsigned>(hr));
+        m_rtStatus = buf;
         return false;
     }
+    // Show all feature data for debugging
+    char featureBuf[256];
+    sprintf(featureBuf, "DXR: SRV=%d RP=%d RT=%d sz=%zu",
+            static_cast<int>(options5.SRVOnlyTiledResourceTier3),
+            static_cast<int>(options5.RenderPassesTier),
+            static_cast<int>(options5.RaytracingTier),
+            sizeof(options5));
+    m_rtLastError = featureBuf;  // Store in error field for display
+
     if (options5.RaytracingTier == D3D12_RAYTRACING_TIER_NOT_SUPPORTED) {
-        m_rtStatus = "DXR: Not supported by GPU";
+        char buf[128];
+        sprintf(buf, "DXR: Tier=%d (unsupported)", static_cast<int>(options5.RaytracingTier));
+        m_rtStatus = buf;
         return false;
     }
 
