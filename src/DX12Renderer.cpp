@@ -1200,16 +1200,19 @@ bool DX12Renderer::InitializeRaytracing() {
 bool DX12Renderer::CreateRaytracingPipeline() {
     ComPtr<ID3D12Device5> device5;
     if (FAILED(m_device->QueryInterface(kIID_ID3D12Device5, reinterpret_cast<void**>(device5.GetAddressOf())))) {
+        m_rtLastError += " | Device5 QI failed";
         return false;
     }
 
     DxcLoader dxc;
     if (!dxc.Initialize()) {
+        m_rtLastError += " | DXC init failed";
         return false;
     }
 
     std::string source = ReadFileToString("shaders/Raytracing.hlsl");
     if (source.empty()) {
+        m_rtLastError += " | Shader file not found";
         return false;
     }
 
@@ -1222,6 +1225,7 @@ bool DX12Renderer::CreateRaytracingPipeline() {
     Microsoft::WRL::ComPtr<IDxcBlob> dxil;
     std::string errors;
     if (!dxc.CompileToDxil(L"Raytracing.hlsl", source, L"", L"lib_6_3", args, dxil, &errors)) {
+        m_rtLastError += " | Shader compile: " + (errors.empty() ? "unknown error" : errors.substr(0, 80));
         return false;
     }
 
@@ -1266,11 +1270,23 @@ bool DX12Renderer::CreateRaytracingPipeline() {
 
     ComPtr<ID3DBlob> sigBlob;
     ComPtr<ID3DBlob> sigError;
-    if (FAILED(D3D12SerializeVersionedRootSignature(&rootSigDesc, sigBlob.GetAddressOf(), sigError.GetAddressOf()))) {
+    HRESULT hr = D3D12SerializeVersionedRootSignature(&rootSigDesc, sigBlob.GetAddressOf(), sigError.GetAddressOf());
+    if (FAILED(hr)) {
+        char buf[64];
+        snprintf(buf, sizeof(buf), " | RootSig serialize 0x%08X", (unsigned)hr);
+        m_rtLastError += buf;
+        if (sigError) {
+            std::string errStr((const char*)sigError->GetBufferPointer(), sigError->GetBufferSize());
+            m_rtLastError += " " + errStr.substr(0, 60);
+        }
         return false;
     }
-    if (FAILED(m_device->CreateRootSignature(0, sigBlob->GetBufferPointer(), sigBlob->GetBufferSize(),
-                                             IID_PPV_ARGS(m_rtGlobalRootSig.GetAddressOf())))) {
+    hr = m_device->CreateRootSignature(0, sigBlob->GetBufferPointer(), sigBlob->GetBufferSize(),
+                                             IID_PPV_ARGS(m_rtGlobalRootSig.GetAddressOf()));
+    if (FAILED(hr)) {
+        char buf[64];
+        snprintf(buf, sizeof(buf), " | CreateRootSig 0x%08X", (unsigned)hr);
+        m_rtLastError += buf;
         return false;
     }
 
@@ -1316,7 +1332,11 @@ bool DX12Renderer::CreateRaytracingPipeline() {
     stateDesc.pSubobjects = subobjects;
 
     void* stateObj = nullptr;
-    if (FAILED(device5->CreateStateObject(&stateDesc, kIID_ID3D12StateObject, &stateObj))) {
+    hr = device5->CreateStateObject(&stateDesc, kIID_ID3D12StateObject, &stateObj);
+    if (FAILED(hr)) {
+        char buf[64];
+        snprintf(buf, sizeof(buf), " | CreateStateObject 0x%08X", (unsigned)hr);
+        m_rtLastError += buf;
         return false;
     }
     m_rtStateObject.Attach(reinterpret_cast<ID3D12StateObject*>(stateObj));
