@@ -2,6 +2,10 @@
 
 A Minecraft-inspired voxel block demo built in C++ using DirectX 11, featuring creative mode gameplay with procedurally generated terrain.
 
+![rasterization screenshot](screenshot.png)
+
+Despite the repo name, DXR-based raytracing mode (press K) does not work yet, but we're getting there.
+
 ## Features
 
 ### Gameplay
