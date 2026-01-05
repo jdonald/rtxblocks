@@ -1119,11 +1119,9 @@ bool DX12Renderer::RenderRasterization(World* world, const Camera& camera, const
 bool DX12Renderer::InitializeRaytracing() {
     m_rtStatus = "Checking DXR support...";
 
-    // Use raw buffer to detect struct layout issues
-    // Windows SDK D3D12_FEATURE_DATA_D3D12_OPTIONS5 should be 12 bytes:
-    // BOOL SRVOnlyTiledResourceTier3 (4), D3D12_RENDER_PASS_TIER (4), D3D12_RAYTRACING_TIER (4)
-    uint32_t rawBuffer[8] = {0};  // Extra space in case runtime expects more
-    HRESULT hr = m_device->CheckFeatureSupport(D3D12_FEATURE_D3D12_OPTIONS5, rawBuffer, sizeof(rawBuffer));
+    // Use raw buffer with exact size (12 bytes = 3 DWORDs)
+    uint32_t rawBuffer[3] = {0};
+    HRESULT hr = m_device->CheckFeatureSupport(D3D12_FEATURE_D3D12_OPTIONS5, rawBuffer, 12);
     if (FAILED(hr)) {
         char buf[128];
         sprintf(buf, "DXR: CheckFeature failed (0x%08X)", static_cast<unsigned>(hr));
@@ -1132,10 +1130,9 @@ bool DX12Renderer::InitializeRaytracing() {
     }
 
     // Show raw buffer contents for debugging
+    // Expected: [0]=SRVOnlyTiledResourceTier3, [1]=RenderPassesTier, [2]=RaytracingTier
     char featureBuf[256];
-    sprintf(featureBuf, "Raw: %u %u %u %u %u %u",
-            rawBuffer[0], rawBuffer[1], rawBuffer[2],
-            rawBuffer[3], rawBuffer[4], rawBuffer[5]);
+    sprintf(featureBuf, "Raw: %u %u %u", rawBuffer[0], rawBuffer[1], rawBuffer[2]);
     m_rtLastError = featureBuf;
 
     // Extract raytracing tier from expected position (3rd DWORD, index 2)
