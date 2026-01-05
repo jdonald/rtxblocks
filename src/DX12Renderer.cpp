@@ -182,6 +182,9 @@ bool DX12Renderer::CreateDevice(Window* window) {
     }
 
     ComPtr<IDXGIAdapter1> adapter;
+    ComPtr<IDXGIAdapter1> selectedAdapter;
+    std::string adapterName;
+
     for (UINT adapterIndex = 0;
          factory->EnumAdapters1(adapterIndex, adapter.ReleaseAndGetAddressOf()) != DXGI_ERROR_NOT_FOUND;
          ++adapterIndex) {
@@ -191,6 +194,13 @@ bool DX12Renderer::CreateDevice(Window* window) {
             continue;
         }
         if (SUCCEEDED(D3D12CreateDevice(adapter.Get(), D3D_FEATURE_LEVEL_12_1, IID_PPV_ARGS(m_device.GetAddressOf())))) {
+            selectedAdapter = adapter;
+            // Convert wide string to narrow for debug
+            char narrowName[128] = {0};
+            for (int i = 0; i < 127 && desc.Description[i]; i++) {
+                narrowName[i] = static_cast<char>(desc.Description[i]);
+            }
+            adapterName = narrowName;
             break;
         }
     }
@@ -198,6 +208,9 @@ bool DX12Renderer::CreateDevice(Window* window) {
     if (!m_device) {
         return false;
     }
+
+    // Store adapter name for debugging
+    m_rtLastError = "GPU: " + adapterName;
 
     return true;
 }
@@ -1129,11 +1142,11 @@ bool DX12Renderer::InitializeRaytracing() {
         return false;
     }
 
-    // Show raw buffer contents for debugging
+    // Show raw buffer contents for debugging, preserve GPU name
     // Expected: [0]=SRVOnlyTiledResourceTier3, [1]=RenderPassesTier, [2]=RaytracingTier
     char featureBuf[256];
-    sprintf(featureBuf, "Raw: %u %u %u", rawBuffer[0], rawBuffer[1], rawBuffer[2]);
-    m_rtLastError = featureBuf;
+    sprintf(featureBuf, " RT=%u RP=%u SRV=%u", rawBuffer[2], rawBuffer[1], rawBuffer[0]);
+    m_rtLastError += featureBuf;
 
     // Extract raytracing tier from expected position (3rd DWORD, index 2)
     uint32_t raytracingTier = rawBuffer[2];
@@ -1736,8 +1749,10 @@ void DX12Renderer::UpdateCameraCB(const Camera& camera) {
 
 bool DX12Renderer::RenderRaytracing(World* world, const Camera& camera, UIInfo& uiInfo) {
     if (!m_raytracingReady) {
-        // Don't overwrite m_rtLastError if it contains feature data
-        if (m_rtLastError.empty() || m_rtLastError.find("SRV=") == std::string::npos) {
+        // Don't overwrite m_rtLastError if it contains GPU/feature data
+        if (m_rtLastError.empty() ||
+            (m_rtLastError.find("GPU:") == std::string::npos &&
+             m_rtLastError.find("RT=") == std::string::npos)) {
             m_rtLastError = "RT not ready: " + m_rtStatus;
         }
         return false;
