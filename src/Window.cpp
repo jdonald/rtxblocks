@@ -7,6 +7,7 @@ Window::Window(int width, int height, const std::string& title)
     , m_height(height)
     , m_title(title)
     , m_mouseCaptured(false)
+    , m_captureRequested(false)
     , m_lastMouseX(0)
     , m_lastMouseY(0)
     , m_firstMouse(true)
@@ -124,6 +125,13 @@ void Window::GetMouseDelta(int& dx, int& dy) {
 }
 
 void Window::SetMouseCapture(bool capture) {
+    m_captureRequested = capture;
+    if (!m_hasFocus) {
+        m_mouseCaptured = false;
+        ShowCursor(TRUE);
+        return;
+    }
+
     m_mouseCaptured = capture;
     if (capture) {
         ShowCursor(FALSE);
@@ -180,38 +188,42 @@ LRESULT Window::HandleMessage(UINT msg, WPARAM wParam, LPARAM lParam) {
     case WM_ACTIVATEAPP:
         m_hasFocus = (wParam == TRUE);
         if (m_hasFocus) {
-            // Regained focus - restore cursor state
-            if (m_mouseCaptured) {
-                ShowCursor(FALSE);
-                m_firstMouse = true;
-            }
+            SetMouseCapture(m_captureRequested);
         } else {
-            // Lost focus - show cursor
-            if (m_mouseCaptured) {
-                ShowCursor(TRUE);
-            }
+            SetMouseCapture(false);
         }
         return 0;
 
     case WM_SETFOCUS:
         m_hasFocus = true;
-        if (m_mouseCaptured) {
-            ShowCursor(FALSE);
-            m_firstMouse = true;
-        }
+        SetMouseCapture(m_captureRequested);
         return 0;
 
     case WM_KILLFOCUS:
         m_hasFocus = false;
-        if (m_mouseCaptured) {
-            ShowCursor(TRUE);
-        }
+        SetMouseCapture(false);
         return 0;
 
     case WM_LBUTTONDOWN:
+        if (!m_keys[VK_LBUTTON]) {
+            m_keysPressed[VK_LBUTTON] = true;
+        }
+        m_keys[VK_LBUTTON] = true;
         if (!m_mouseCaptured) {
             SetMouseCapture(true);
         }
+        return 0;
+    case WM_LBUTTONUP:
+        m_keys[VK_LBUTTON] = false;
+        return 0;
+    case WM_RBUTTONDOWN:
+        if (!m_keys[VK_RBUTTON]) {
+            m_keysPressed[VK_RBUTTON] = true;
+        }
+        m_keys[VK_RBUTTON] = true;
+        return 0;
+    case WM_RBUTTONUP:
+        m_keys[VK_RBUTTON] = false;
         return 0;
     }
 

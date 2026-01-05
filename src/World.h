@@ -5,6 +5,7 @@
 #include <map>
 #include <memory>
 #include <cstdint>
+#include <vector>
 
 class World {
 public:
@@ -19,12 +20,14 @@ public:
 
     void Update(const Vector3& playerPos, ID3D11Device* device);
     void Render(ID3D11DeviceContext* context);
-    void RenderTransparent(ID3D11DeviceContext* context);
+    void RenderTransparent(ID3D11DeviceContext* context, const Vector3& cameraPos);
 
     Block GetBlock(int worldX, int worldY, int worldZ) const;
     void SetBlock(int worldX, int worldY, int worldZ, BlockType type);
     int GetTerrainHeight(int worldX, int worldZ) const;
     DebugStats GetDebugStats() const;
+    void GatherSolidMesh(std::vector<Vertex>& vertices, std::vector<uint32_t>& indices) const;
+    void GatherTransparentMesh(const Vector3& cameraPos, std::vector<Vertex>& vertices, std::vector<uint32_t>& indices) const;
 
     bool Raycast(const Vector3& origin, const Vector3& direction, float maxDistance,
                  Vector3& hitPos, Vector3& hitNormal, Block& hitBlock);

@@ -37,6 +37,7 @@ private:
     bool m_keys[256];
     bool m_keysPressed[256];
     bool m_mouseCaptured;
+    bool m_captureRequested;
     int m_lastMouseX;
     int m_lastMouseY;
     bool m_firstMouse;

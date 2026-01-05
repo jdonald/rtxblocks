@@ -1,5 +1,6 @@
 #pragma once
 #include "MathUtils.h"
+#include "Chunk.h"
 #include <d3d11.h>
 #include <wrl/client.h>
 #include <vector>
@@ -21,6 +22,9 @@ public:
 
     void CreateMesh(ID3D11Device* device);
 
+    const std::vector<Vertex>& GetVertices() const { return m_vertices; }
+    const std::vector<uint32_t>& GetIndices() const { return m_indices; }
+
     Vector3 GetPosition() const { return m_position; }
     void SetPosition(const Vector3& pos) { m_position = pos; }
 
@@ -38,6 +42,8 @@ private:
     ComPtr<ID3D11Buffer> m_vertexBuffer;
     ComPtr<ID3D11Buffer> m_indexBuffer;
     uint32_t m_indexCount;
+    std::vector<Vertex> m_vertices;
+    std::vector<uint32_t> m_indices;
 
     void UpdateAI(float deltaTime);
     void CreateCowMesh(std::vector<struct Vertex>& vertices, std::vector<uint32_t>& indices);

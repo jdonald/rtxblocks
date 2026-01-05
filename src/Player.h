@@ -2,7 +2,10 @@
 #include "MathUtils.h"
 #include "Block.h"
 #include "Camera.h"
+#include "Chunk.h"
 #include <array>
+#include <d3d11.h>
+#include <wrl/client.h>
 
 class Window;
 class World;
@@ -23,21 +26,34 @@ public:
     void SetSelectedSlot(int slot);
     int GetSelectedSlot() const { return m_selectedSlot; }
 
+    void CreateMesh(ID3D11Device* device);
+    void Render(ID3D11DeviceContext* context);
+    Matrix4x4 GetWorldMatrix() const;
+    const std::vector<Vertex>& GetVertices() const { return m_vertices; }
+    const std::vector<uint32_t>& GetIndices() const { return m_indices; }
+
 private:
     void UpdateMovement(float deltaTime, Window* window, World* world, SoundSystem* soundSystem);
     void UpdateLook(float deltaTime, Window* window);
     void UpdateBlockInteraction(Window* window, World* world, SoundSystem* soundSystem);
+    void AddBlockToInventory(BlockType type);
 
     Vector3 m_position;
     Vector3 m_velocity;
+    float m_verticalVelocity;
     float m_yaw;
     float m_pitch;
     Camera m_camera;
 
     bool m_isFlying;
+    bool m_onGround;
     float m_moveSpeed;
     float m_flySpeed;
     float m_mouseSensitivity;
+    float m_gravity;
+    float m_jumpVelocity;
+    float m_spaceTapTimer;
+    float m_doubleTapWindow;
 
     std::array<BlockType, 9> m_inventory;
     int m_selectedSlot;
@@ -48,4 +64,10 @@ private:
     // For landing sounds
     bool m_wasOnGround;
     float m_fallDistance;
+
+    Microsoft::WRL::ComPtr<ID3D11Buffer> m_vertexBuffer;
+    Microsoft::WRL::ComPtr<ID3D11Buffer> m_indexBuffer;
+    uint32_t m_indexCount;
+    std::vector<Vertex> m_vertices;
+    std::vector<uint32_t> m_indices;
 };

@@ -1,6 +1,7 @@
 #include "World.h"
 #include <cmath>
 #include <algorithm>
+#include <vector>
 
 World::World(unsigned int seed)
     : m_terrainGenerator(seed)
@@ -94,9 +95,29 @@ void World::Render(ID3D11DeviceContext* context) {
     }
 }
 
-void World::RenderTransparent(ID3D11DeviceContext* context) {
-    for (auto& pair : m_chunks) {
-        pair.second->RenderTransparent(context);
+void World::RenderTransparent(ID3D11DeviceContext* context, const Vector3& cameraPos) {
+    struct ChunkEntry {
+        Chunk* chunk;
+        float distanceSq;
+    };
+
+    std::vector<ChunkEntry> entries;
+    entries.reserve(m_chunks.size());
+
+    for (const auto& pair : m_chunks) {
+        Chunk* chunk = pair.second.get();
+        Vector3 chunkPos = chunk->GetWorldPosition();
+        Vector3 center(chunkPos.x + CHUNK_SIZE * 0.5f, CHUNK_HEIGHT * 0.5f, chunkPos.z + CHUNK_SIZE * 0.5f);
+        Vector3 delta = center - cameraPos;
+        float distSq = delta.x * delta.x + delta.y * delta.y + delta.z * delta.z;
+        entries.push_back({ chunk, distSq });
+    }
+
+    std::sort(entries.begin(), entries.end(),
+              [](const ChunkEntry& a, const ChunkEntry& b) { return a.distanceSq > b.distanceSq; });
+
+    for (const auto& entry : entries) {
+        entry.chunk->RenderTransparent(context);
     }
 }
 
@@ -145,6 +166,67 @@ World::DebugStats World::GetDebugStats() const {
     }
 
     return stats;
+}
+
+void World::GatherSolidMesh(std::vector<Vertex>& vertices, std::vector<uint32_t>& indices) const {
+    vertices.clear();
+    indices.clear();
+
+    for (const auto& pair : m_chunks) {
+        const Chunk* chunk = pair.second.get();
+        const auto& chunkVerts = chunk->GetSolidVertices();
+        const auto& chunkIndices = chunk->GetSolidIndices();
+        if (chunkVerts.empty() || chunkIndices.empty()) {
+            continue;
+        }
+
+        uint32_t baseIndex = static_cast<uint32_t>(vertices.size());
+        vertices.insert(vertices.end(), chunkVerts.begin(), chunkVerts.end());
+        indices.reserve(indices.size() + chunkIndices.size());
+        for (uint32_t idx : chunkIndices) {
+            indices.push_back(baseIndex + idx);
+        }
+    }
+}
+
+void World::GatherTransparentMesh(const Vector3& cameraPos, std::vector<Vertex>& vertices, std::vector<uint32_t>& indices) const {
+    vertices.clear();
+    indices.clear();
+
+    struct ChunkEntry {
+        Chunk* chunk;
+        float distanceSq;
+    };
+
+    std::vector<ChunkEntry> entries;
+    entries.reserve(m_chunks.size());
+
+    for (const auto& pair : m_chunks) {
+        Chunk* chunk = pair.second.get();
+        Vector3 chunkPos = chunk->GetWorldPosition();
+        Vector3 center(chunkPos.x + CHUNK_SIZE * 0.5f, CHUNK_HEIGHT * 0.5f, chunkPos.z + CHUNK_SIZE * 0.5f);
+        Vector3 delta = center - cameraPos;
+        float distSq = delta.x * delta.x + delta.y * delta.y + delta.z * delta.z;
+        entries.push_back({ chunk, distSq });
+    }
+
+    std::sort(entries.begin(), entries.end(),
+              [](const ChunkEntry& a, const ChunkEntry& b) { return a.distanceSq > b.distanceSq; });
+
+    for (const auto& entry : entries) {
+        const auto& chunkVerts = entry.chunk->GetTransparentVertices();
+        const auto& chunkIndices = entry.chunk->GetTransparentIndices();
+        if (chunkVerts.empty() || chunkIndices.empty()) {
+            continue;
+        }
+
+        uint32_t baseIndex = static_cast<uint32_t>(vertices.size());
+        vertices.insert(vertices.end(), chunkVerts.begin(), chunkVerts.end());
+        indices.reserve(indices.size() + chunkIndices.size());
+        for (uint32_t idx : chunkIndices) {
+            indices.push_back(baseIndex + idx);
+        }
+    }
 }
 
 bool World::Raycast(const Vector3& origin, const Vector3& direction, float maxDistance,

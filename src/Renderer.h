@@ -23,6 +23,8 @@ struct DebugInfo {
     int loadedChunkCount;
     uint64_t solidIndexCount;
     uint64_t transparentIndexCount;
+    const char* dxrStatus = nullptr;
+    const char* dxrError = nullptr;
 };
 
 // UI vertex structure for 2D rendering
@@ -55,9 +57,11 @@ public:
 
     void BeginFrame();
     void EndFrame();
+    void Resize(int width, int height);
 
     void RenderWorld(World* world, Camera& camera);
     void RenderMob(Mob* mob, Camera& camera);
+    void RenderPlayer(Player* player, Camera& camera);
     void RenderUI(Player* player);
     void RenderDebugHUD(const DebugInfo& debugInfo);
 

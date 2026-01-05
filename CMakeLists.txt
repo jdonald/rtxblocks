@@ -22,6 +22,8 @@ set(SOURCES
     src/PerlinNoise.cpp
     src/BlockDatabase.cpp
     src/SoundSystem.cpp
+    src/DxcLoader.cpp
+    src/DX12Renderer.cpp
 )
 
 set(HEADERS
@@ -38,6 +40,8 @@ set(HEADERS
     src/BlockDatabase.h
     src/MathUtils.h
     src/SoundSystem.h
+    src/DxcLoader.h
+    src/DX12Renderer.h
 )
 
 # Shader files
@@ -48,6 +52,9 @@ set(SHADERS
     shaders/ShadowPixel.hlsl
     shaders/UIVertex.hlsl
     shaders/UIPixel.hlsl
+    shaders/Raytracing.hlsl
+    shaders/DX12Block.hlsl
+    shaders/DX12UI.hlsl
 )
 
 # Create executable
@@ -57,6 +64,7 @@ add_executable(${PROJECT_NAME} ${SOURCES} ${HEADERS})
 if(WIN32)
     # DirectX libraries
     target_link_libraries(${PROJECT_NAME}
+        d3d12
         d3d11
         dxgi
         d3dcompiler

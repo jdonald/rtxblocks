@@ -32,6 +32,17 @@ void Camera::SetAspectRatio(float aspect) {
     m_aspectRatio = aspect;
 }
 
+Vector3 Camera::GetEyePosition() const {
+    Vector3 eye = m_position;
+    Vector3 forward = GetForward();
+    if (m_mode == CameraMode::ThirdPersonBack) {
+        eye = m_targetPosition - forward * 5.0f + Vector3(0, 1.5f, 0);
+    } else if (m_mode == CameraMode::ThirdPersonFront) {
+        eye = m_targetPosition + forward * 5.0f + Vector3(0, 1.5f, 0);
+    }
+    return eye;
+}
+
 Vector3 Camera::GetForward() const {
     Vector3 forward;
     forward.x = std::cos(m_pitch) * std::sin(m_yaw);
@@ -43,13 +54,14 @@ Vector3 Camera::GetForward() const {
 Vector3 Camera::GetRight() const {
     Vector3 forward = GetForward();
     Vector3 worldUp(0, 1, 0);
-    return forward.cross(worldUp).normalized();
+    // Use worldUp x forward for left-handed coordinates.
+    return worldUp.cross(forward).normalized();
 }
 
 Vector3 Camera::GetUp() const {
     Vector3 right = GetRight();
     Vector3 forward = GetForward();
-    return right.cross(forward).normalized();
+    return forward.cross(right).normalized();
 }
 
 Matrix4x4 Camera::GetViewMatrix() const {

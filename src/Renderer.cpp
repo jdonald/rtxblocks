@@ -507,6 +507,39 @@ void Renderer::EndFrame() {
     m_swapChain->Present(1, 0);
 }
 
+void Renderer::Resize(int width, int height) {
+    if (width <= 0 || height <= 0) {
+        return;
+    }
+    if (width == m_width && height == m_height) {
+        return;
+    }
+
+    m_width = width;
+    m_height = height;
+
+    if (m_context) {
+        m_context->OMSetRenderTargets(0, nullptr, nullptr);
+    }
+
+    m_backBufferRTV.Reset();
+    m_depthStencilView.Reset();
+    m_depthStencilTexture.Reset();
+
+    m_swapChain->ResizeBuffers(0, m_width, m_height, DXGI_FORMAT_UNKNOWN, 0);
+    CreateRenderTargets();
+    CreateDepthStencil(m_width, m_height);
+
+    D3D11_VIEWPORT viewport = {};
+    viewport.TopLeftX = 0;
+    viewport.TopLeftY = 0;
+    viewport.Width = static_cast<float>(m_width);
+    viewport.Height = static_cast<float>(m_height);
+    viewport.MinDepth = 0.0f;
+    viewport.MaxDepth = 1.0f;
+    m_context->RSSetViewports(1, &viewport);
+}
+
 void Renderer::UpdateConstantBuffer(const Matrix4x4& world, const Matrix4x4& view, const Matrix4x4& proj) {
     ConstantBuffer cb;
     cb.world = world.Transpose();
@@ -581,7 +614,7 @@ void Renderer::RenderWorld(World* world, Camera& camera) {
     m_context->OMSetBlendState(m_alphaBlendState.Get(), blendFactor, 0xFFFFFFFF);
     m_context->OMSetDepthStencilState(m_depthReadOnlyState.Get(), 0);
 
-    world->RenderTransparent(m_context.Get());
+    world->RenderTransparent(m_context.Get(), camera.GetPosition());
 
     // Reset states
     m_context->OMSetBlendState(nullptr, blendFactor, 0xFFFFFFFF);
@@ -601,6 +634,22 @@ void Renderer::RenderMob(Mob* mob, Camera& camera) {
     m_context->PSSetConstantBuffers(0, 1, m_constantBuffer.GetAddressOf());
 
     mob->Render(m_context.Get());
+}
+
+void Renderer::RenderPlayer(Player* player, Camera& camera) {
+    if (!player) return;
+    if (camera.GetMode() == CameraMode::FirstPerson) return;
+
+    Matrix4x4 worldMatrix = player->GetWorldMatrix();
+    Matrix4x4 viewMatrix = camera.GetViewMatrix();
+    Matrix4x4 projMatrix = camera.GetProjectionMatrix();
+
+    UpdateConstantBuffer(worldMatrix, viewMatrix, projMatrix);
+
+    m_context->VSSetConstantBuffers(0, 1, m_constantBuffer.GetAddressOf());
+    m_context->PSSetConstantBuffers(0, 1, m_constantBuffer.GetAddressOf());
+
+    player->Render(m_context.Get());
 }
 
 void Renderer::RenderUI(Player* player) {
@@ -750,8 +799,8 @@ void Renderer::RenderDebugHUD(const DebugInfo& debugInfo) {
     std::vector<uint32_t> indices;
 
     // Draw semi-transparent background
-    float bgWidth = 300.0f;
-    float bgHeight = 100.0f;
+    float bgWidth = 350.0f;
+    float bgHeight = (debugInfo.dxrStatus || debugInfo.dxrError) ? 140.0f : 100.0f;
     float bgX = 10.0f;
     float bgY = 10.0f;
 
@@ -799,6 +848,14 @@ void Renderer::RenderDebugHUD(const DebugInfo& debugInfo) {
         DrawText(blockText, 15.0f, 75.0f, 2.0f, Vector4(1.0f, 1.0f, 0.8f, 1.0f), vertices, indices);
     } else {
         DrawText("Looking at: Nothing", 15.0f, 75.0f, 2.0f, Vector4(0.7f, 0.7f, 0.7f, 1.0f), vertices, indices);
+    }
+
+    // Draw DXR status if available
+    if (debugInfo.dxrStatus) {
+        DrawText(debugInfo.dxrStatus, 15.0f, 95.0f, 2.0f, Vector4(0.5f, 0.8f, 1.0f, 1.0f), vertices, indices);
+    }
+    if (debugInfo.dxrError && debugInfo.dxrError[0] != '\0') {
+        DrawText(debugInfo.dxrError, 15.0f, 115.0f, 2.0f, Vector4(1.0f, 0.4f, 0.4f, 1.0f), vertices, indices);
     }
 
     if (vertices.empty()) return;
