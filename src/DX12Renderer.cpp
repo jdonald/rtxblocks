@@ -1118,26 +1118,32 @@ bool DX12Renderer::RenderRasterization(World* world, const Camera& camera, const
 
 bool DX12Renderer::InitializeRaytracing() {
     m_rtStatus = "Checking DXR support...";
-    D3D12_FEATURE_DATA_D3D12_OPTIONS5 options5 = {};
-    HRESULT hr = m_device->CheckFeatureSupport(D3D12_FEATURE_D3D12_OPTIONS5, &options5, sizeof(options5));
+
+    // Use raw buffer to detect struct layout issues
+    // Windows SDK D3D12_FEATURE_DATA_D3D12_OPTIONS5 should be 12 bytes:
+    // BOOL SRVOnlyTiledResourceTier3 (4), D3D12_RENDER_PASS_TIER (4), D3D12_RAYTRACING_TIER (4)
+    uint32_t rawBuffer[8] = {0};  // Extra space in case runtime expects more
+    HRESULT hr = m_device->CheckFeatureSupport(D3D12_FEATURE_D3D12_OPTIONS5, rawBuffer, sizeof(rawBuffer));
     if (FAILED(hr)) {
         char buf[128];
         sprintf(buf, "DXR: CheckFeature failed (0x%08X)", static_cast<unsigned>(hr));
         m_rtStatus = buf;
         return false;
     }
-    // Show all feature data for debugging
-    char featureBuf[256];
-    sprintf(featureBuf, "DXR: SRV=%d RP=%d RT=%d sz=%zu",
-            static_cast<int>(options5.SRVOnlyTiledResourceTier3),
-            static_cast<int>(options5.RenderPassesTier),
-            static_cast<int>(options5.RaytracingTier),
-            sizeof(options5));
-    m_rtLastError = featureBuf;  // Store in error field for display
 
-    if (options5.RaytracingTier == D3D12_RAYTRACING_TIER_NOT_SUPPORTED) {
+    // Show raw buffer contents for debugging
+    char featureBuf[256];
+    sprintf(featureBuf, "Raw: %u %u %u %u %u %u",
+            rawBuffer[0], rawBuffer[1], rawBuffer[2],
+            rawBuffer[3], rawBuffer[4], rawBuffer[5]);
+    m_rtLastError = featureBuf;
+
+    // Extract raytracing tier from expected position (3rd DWORD, index 2)
+    uint32_t raytracingTier = rawBuffer[2];
+
+    if (raytracingTier == 0) {
         char buf[128];
-        sprintf(buf, "DXR: Tier=%d (unsupported)", static_cast<int>(options5.RaytracingTier));
+        sprintf(buf, "DXR: Tier=%u (unsupported)", raytracingTier);
         m_rtStatus = buf;
         return false;
     }
