@@ -1733,7 +1733,10 @@ void DX12Renderer::UpdateCameraCB(const Camera& camera) {
 
 bool DX12Renderer::RenderRaytracing(World* world, const Camera& camera, UIInfo& uiInfo) {
     if (!m_raytracingReady) {
-        m_rtLastError = "RT not ready: " + m_rtStatus;
+        // Don't overwrite m_rtLastError if it contains feature data
+        if (m_rtLastError.empty() || m_rtLastError.find("SRV=") == std::string::npos) {
+            m_rtLastError = "RT not ready: " + m_rtStatus;
+        }
         return false;
     }
     if (!world) {
